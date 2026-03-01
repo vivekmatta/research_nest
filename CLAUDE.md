@@ -96,6 +96,57 @@ git push
 
 ---
 
+## Chrome Web Store Submission — Progress Log
+
+### Status: Submitted for review (awaiting approval)
+
+### What has been done
+
+#### Build & packaging
+- [x] `npm run build` — clean build, 17 modules, no errors
+- [x] `dist/` folder zipped as `researchnest.zip` and uploaded to the Web Store dashboard
+- [x] Remote repo configured: `git@github.com:vivekmatta/research_nest.git`
+- [x] All commits pushed to `origin/master`
+
+#### Store listing
+- [x] Store icon (128×128 PNG) — generated via `generate-store-assets.html`
+- [x] 5 screenshots (640×400 PNG, no alpha) — generated via `generate-store-assets.html`
+  - Screenshot 1: Dashboard cluster view
+  - Screenshot 2: Popup active session
+  - Screenshot 3: Session archive
+  - Screenshot 4: AI summary & tab detail
+  - Screenshot 5: Settings page
+- [x] Publisher declared as **non-trader** (personal/hobby project, no commercial intent)
+
+#### Privacy practices tab (required before submission)
+- [x] Single purpose description submitted
+- [x] Permission justifications written and submitted for all 9 permissions:
+  `tabs`, `tabGroups`, `storage`, `scripting`, `alarms`, `notifications`,
+  `activeTab`, `downloads`, `host_permissions (<all_urls>)`
+- [x] Remote code justification submitted (extension uses no remote code; Gemini API calls only)
+- [x] Data usage disclosures certified:
+  - Collects: authentication info (API key, local only), web history (tab URLs/titles), user activity (dwell time), website content (page text for clustering)
+  - Does NOT collect: PII, health, financial, location, personal communications
+  - All three policy certifications checked
+- [x] Privacy policy drafted (Markdown) — to be hosted as a public GitHub Gist
+- [x] Contact email added and verified on Account tab
+
+#### Known review flags
+- **Broad host permissions warning**: `<all_urls>` triggers an in-depth review delay.
+  This is expected and justified — the extension must inject content scripts into
+  any tab the user researches, and sites cannot be predicted in advance.
+  Justification was submitted in the Privacy practices form.
+
+### How to update the extension after publishing
+1. Make code changes
+2. `npm run build && npx tsc --noEmit`
+3. Bump version in `public/manifest.json` (e.g. `1.0.0` → `1.0.1`)
+4. `git commit` + `git push`
+5. Zip `dist/`: `powershell -Command "Compress-Archive -Path dist\* -DestinationPath researchnest.zip -Force"`
+6. Upload new ZIP in Web Store dashboard → Package tab → Submit for review
+
+---
+
 ## Architecture
 
 ### Build

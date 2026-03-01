@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ResearchNest Dashboard</title>
+  <link rel="stylesheet" href="../dashboard.css" />
+</head>
+<body>
+  <div id="app">
+    <header class="header">
+      <div class="header-left">
+        <img src="../icons/icon48.png" class="logo-img" alt="" />
+        <h1 class="logo-title">ResearchNest</h1>
+      </div>
+      <div class="header-right">
+        <input type="search" id="search-input" placeholder="Search sessions, tabs, keywords…" class="search-input" />
+        <button id="btn-new-session" class="btn btn-primary">+ New Session</button>
+        <button id="btn-options" class="btn btn-ghost">Settings</button>
+      </div>
+    </header>
+
+    <main class="main">
+      <!-- Sidebar: session list -->
+      <aside class="sidebar" id="sidebar">
+        <h2 class="sidebar-title">Sessions</h2>
+        <div id="session-list" class="session-list">
+          <p class="empty-msg">No sessions yet.</p>
+        </div>
+      </aside>
+
+      <!-- Content: session detail -->
+      <section class="content" id="content">
+        <div id="welcome" class="welcome">
+          <div class="welcome-icon">🪺</div>
+          <h2>Welcome to ResearchNest</h2>
+          <p>Start a session when you're on a research spree. Your tabs will be automatically clustered by topic and saved here.</p>
+          <button id="btn-welcome-start" class="btn btn-primary">Start a Session</button>
+        </div>
+
+        <div id="session-detail" class="session-detail hidden">
+          <div class="detail-header">
+            <div class="detail-title-row">
+              <h2 id="detail-title" class="detail-title" contenteditable="false"></h2>
+              <button id="btn-edit-title" class="btn-icon" title="Edit title">✏️</button>
+              <span id="detail-date" class="detail-date"></span>
+            </div>
+            <div class="detail-actions">
+              <button id="btn-export" class="btn btn-ghost">Export Markdown</button>
+              <button id="btn-delete" class="btn btn-ghost btn-danger-ghost">Delete Session</button>
+            </div>
+          </div>
+
+          <!-- Summary panel -->
+          <div id="summary-panel" class="summary-panel hidden">
+            <h3>Session Summary</h3>
+            <p id="summary-text"></p>
+            <div id="takeaways-section" class="hidden">
+              <h4>Key Takeaways</h4>
+              <ul id="takeaways-list"></ul>
+            </div>
+            <div id="questions-section" class="hidden">
+              <h4>Open Questions</h4>
+              <ul id="questions-list"></ul>
+            </div>
+          </div>
+
+          <!-- Cluster grid -->
+          <div id="cluster-grid" class="cluster-grid"></div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- Tab hover card -->
+  <div id="hover-card" class="hover-card hidden">
+    <div class="hover-favicon">
+      <img id="hover-favicon-img" src="" alt="" />
+    </div>
+    <div class="hover-body">
+      <div id="hover-title" class="hover-title"></div>
+      <div id="hover-url" class="hover-url"></div>
+      <div id="hover-dwell" class="hover-dwell"></div>
+      <ul id="hover-bullets" class="hover-bullets"></ul>
+      <div id="hover-loading" class="hover-loading hidden">Generating summary…</div>
+    </div>
+  </div>
+
+  <script type="module" src="dashboard.js"></script>
+</body>
+</html>

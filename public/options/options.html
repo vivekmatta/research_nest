@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ResearchNest Settings</title>
+  <link rel="stylesheet" href="../options.css" />
+</head>
+<body>
+  <div id="app">
+    <header class="header">
+      <img src="../icons/icon48.png" class="logo-img" alt="" />
+      <h1>ResearchNest Settings</h1>
+    </header>
+
+    <main class="main">
+      <form id="settings-form">
+
+        <!-- AI Settings -->
+        <section class="section">
+          <h2 class="section-title">AI Summarization</h2>
+          <p class="section-desc">
+            Uses Google Gemini API (free tier) for tab summaries and session insights.
+            Get a free API key at <a href="https://aistudio.google.com/app/apikey" target="_blank">aistudio.google.com</a> — no credit card needed.
+          </p>
+
+          <div class="field">
+            <label class="label" for="gemini-key">Gemini API Key</label>
+            <div class="input-row">
+              <input type="password" id="gemini-key" class="input" placeholder="AIza…" autocomplete="off" />
+              <button type="button" id="btn-toggle-key" class="btn btn-ghost btn-sm">Show</button>
+              <button type="button" id="btn-test-key" class="btn btn-ghost btn-sm">Test</button>
+            </div>
+            <span id="key-status" class="status-msg"></span>
+          </div>
+
+          <div class="field">
+            <label class="toggle-label">
+              <input type="checkbox" id="ai-enabled" class="toggle" />
+              <span class="toggle-track"></span>
+              <span class="toggle-text">Enable AI summaries &amp; session insights</span>
+            </label>
+          </div>
+        </section>
+
+        <!-- Detection Settings -->
+        <section class="section">
+          <h2 class="section-title">Session Detection</h2>
+
+          <div class="field">
+            <label class="toggle-label">
+              <input type="checkbox" id="auto-detect" class="toggle" />
+              <span class="toggle-track"></span>
+              <span class="toggle-text">Automatically detect research sessions</span>
+            </label>
+          </div>
+
+          <div class="field">
+            <label class="label" for="threshold">
+              Tab threshold: <strong id="threshold-val">8</strong> tabs
+            </label>
+            <input type="range" id="threshold" class="slider" min="3" max="20" step="1" value="8" />
+            <div class="slider-labels"><span>3</span><span>20</span></div>
+          </div>
+
+          <div class="field">
+            <label class="label" for="window">
+              Detection window: <strong id="window-val">5</strong> minutes
+            </label>
+            <input type="range" id="window" class="slider" min="1" max="15" step="1" value="5" />
+            <div class="slider-labels"><span>1 min</span><span>15 min</span></div>
+          </div>
+        </section>
+
+        <!-- Appearance -->
+        <section class="section">
+          <h2 class="section-title">Appearance</h2>
+          <div class="field">
+            <label class="label" for="theme">Theme</label>
+            <select id="theme" class="select">
+              <option value="system">System default</option>
+              <option value="light">Light</option>
+              <option value="dark">Dark</option>
+            </select>
+          </div>
+        </section>
+
+        <div class="form-actions">
+          <button type="submit" class="btn btn-primary">Save Settings</button>
+          <span id="save-status" class="status-msg"></span>
+        </div>
+      </form>
+
+      <!-- Danger zone -->
+      <section class="section danger-zone">
+        <h2 class="section-title danger">Danger Zone</h2>
+        <button type="button" id="btn-clear-all" class="btn btn-danger">Delete All Sessions</button>
+        <p class="hint">This permanently removes all saved session data. Cannot be undone.</p>
+      </section>
+    </main>
+  </div>
+  <script type="module" src="options.js"></script>
+</body>
+</html>

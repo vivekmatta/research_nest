@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ResearchNest</title>
+  <link rel="stylesheet" href="../popup.css" />
+</head>
+<body>
+  <div id="app">
+    <!-- idle state -->
+    <div id="state-idle" class="state hidden">
+      <div class="logo">
+        <img src="../icons/icon48.png" alt="ResearchNest" />
+        <h1>ResearchNest</h1>
+      </div>
+      <p class="tagline">Cluster your research tabs automatically.</p>
+      <button id="btn-start" class="btn btn-primary">Start Session</button>
+      <div class="actions-row">
+        <button id="btn-dashboard-idle" class="btn btn-ghost">Open Dashboard</button>
+        <button id="btn-options" class="btn btn-ghost">Settings</button>
+      </div>
+    </div>
+
+    <!-- active state -->
+    <div id="state-active" class="state hidden">
+      <div class="session-header">
+        <span class="dot active"></span>
+        <span id="session-title" class="session-title">Active Session</span>
+      </div>
+      <div class="stats-grid">
+        <div class="stat">
+          <span id="tab-count" class="stat-value">0</span>
+          <span class="stat-label">tabs</span>
+        </div>
+        <div class="stat">
+          <span id="cluster-count" class="stat-value">—</span>
+          <span class="stat-label">clusters</span>
+        </div>
+        <div class="stat">
+          <span id="duration-val" class="stat-value">0m</span>
+          <span class="stat-label">duration</span>
+        </div>
+      </div>
+      <button id="btn-end" class="btn btn-danger">End &amp; Cluster</button>
+      <div class="actions-row">
+        <button id="btn-dashboard-active" class="btn btn-ghost">Dashboard</button>
+      </div>
+    </div>
+
+    <!-- prompt state (session detected) -->
+    <div id="state-prompt" class="state hidden">
+      <div class="prompt-icon">🔍</div>
+      <h2>Research session detected!</h2>
+      <p id="prompt-msg" class="prompt-msg">You've opened several tabs recently.</p>
+      <button id="btn-confirm-start" class="btn btn-primary">Start Session</button>
+      <button id="btn-dismiss" class="btn btn-ghost">Dismiss</button>
+    </div>
+
+    <!-- loading overlay -->
+    <div id="loading" class="loading hidden">
+      <div class="spinner"></div>
+      <p id="loading-msg">Processing…</p>
+    </div>
+  </div>
+  <script type="module" src="popup.js"></script>
+</body>
+</html>

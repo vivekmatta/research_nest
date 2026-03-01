@@ -1,0 +1,557 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>ResearchNest — Store Asset Generator</title>
+<style>
+  * { box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #020617; color: #e2e8f0; padding: 32px; margin: 0; }
+  h1 { color: #f59e0b; font-size: 20px; margin: 0 0 4px; }
+  p.sub { color: #475569; font-size: 13px; margin: 0 0 36px; }
+  .section { margin-bottom: 44px; }
+  .label { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: #64748b; margin-bottom: 10px; }
+  canvas { display: block; border: 1px solid #1e293b; max-width: 100%; }
+  .dl-btn { display: inline-block; margin-top: 10px; background: #0f172a; border: 1px solid #334155; color: #7dd3fc; padding: 6px 14px; border-radius: 6px; font-size: 12px; cursor: pointer; user-select: none; }
+  .dl-btn:hover { border-color: #3b82f6; color: #bfdbfe; }
+  .row { display: flex; flex-wrap: wrap; gap: 32px; align-items: flex-start; }
+</style>
+</head>
+<body>
+
+<h1>ResearchNest — Chrome Store Assets</h1>
+<p class="sub">Open this file in Chrome, then click each Download button to save the PNG file.</p>
+
+<div class="row">
+  <div class="section">
+    <div class="label">Icon — 128 × 128 PNG (required)</div>
+    <canvas id="icon" width="128" height="128"></canvas>
+    <div class="dl-btn" onclick="dl('icon','researchnest-icon-128.png')">⬇ Download Icon</div>
+  </div>
+</div>
+
+<div class="section">
+  <div class="label">Screenshot 1 — Dashboard: Cluster View (640 × 400)</div>
+  <canvas id="ss1" width="640" height="400"></canvas>
+  <div class="dl-btn" onclick="dl('ss1','screenshot-1-clusters.png')">⬇ Download</div>
+</div>
+
+<div class="section">
+  <div class="label">Screenshot 2 — Popup: Active Session (640 × 400)</div>
+  <canvas id="ss2" width="640" height="400"></canvas>
+  <div class="dl-btn" onclick="dl('ss2','screenshot-2-popup.png')">⬇ Download</div>
+</div>
+
+<div class="section">
+  <div class="label">Screenshot 3 — Dashboard: Session Archive (640 × 400)</div>
+  <canvas id="ss3" width="640" height="400"></canvas>
+  <div class="dl-btn" onclick="dl('ss3','screenshot-3-sessions.png')">⬇ Download</div>
+</div>
+
+<div class="section">
+  <div class="label">Screenshot 4 — AI Summary & Tab Detail (640 × 400)</div>
+  <canvas id="ss4" width="640" height="400"></canvas>
+  <div class="dl-btn" onclick="dl('ss4','screenshot-4-summary.png')">⬇ Download</div>
+</div>
+
+<div class="section">
+  <div class="label">Screenshot 5 — Settings Page (640 × 400)</div>
+  <canvas id="ss5" width="640" height="400"></canvas>
+  <div class="dl-btn" onclick="dl('ss5','screenshot-5-settings.png')">⬇ Download</div>
+</div>
+
+<script>
+// ── Utilities ──────────────────────────────────────────────────────────────
+
+function rrect(ctx, x, y, w, h, r) {
+  r = Math.min(r, w / 2, h / 2);
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + w, y,     x + w, y + h, r);
+  ctx.arcTo(x + w, y + h, x,     y + h, r);
+  ctx.arcTo(x,     y + h, x,     y,     r);
+  ctx.arcTo(x,     y,     x + w, y,     r);
+  ctx.closePath();
+}
+
+function fill(ctx, x, y, w, h, r, color) {
+  ctx.fillStyle = color;
+  rrect(ctx, x, y, w, h, r);
+  ctx.fill();
+}
+
+function outline(ctx, x, y, w, h, r, color, lw) {
+  ctx.strokeStyle = color;
+  ctx.lineWidth = lw || 1;
+  rrect(ctx, x, y, w, h, r);
+  ctx.stroke();
+}
+
+function card(ctx, x, y, w, h, r) {
+  fill(ctx, x, y, w, h, r || 8, '#1e293b');
+  outline(ctx, x, y, w, h, r || 8, '#334155', 1);
+}
+
+function txt(ctx, s, x, y, opts) {
+  const o = opts || {};
+  ctx.save();
+  ctx.fillStyle = o.color || '#f8fafc';
+  ctx.font = (o.weight || '400') + ' ' + (o.size || 13) + 'px -apple-system,system-ui,sans-serif';
+  ctx.textAlign  = o.align || 'left';
+  ctx.textBaseline = o.base || 'top';
+  ctx.fillText(s, x, y);
+  ctx.restore();
+}
+
+function dot(ctx, x, y, r, color) {
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  ctx.arc(x, y, r, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+function pill(ctx, label, x, y, fg, bg) {
+  ctx.save();
+  ctx.font = '10px system-ui';
+  const tw = ctx.measureText(label).width;
+  const pw = tw + 12, ph = 18;
+  fill(ctx, x, y, pw, ph, 9, bg);
+  ctx.fillStyle = fg;
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(label, x + 6, y + ph / 2);
+  ctx.restore();
+  return pw + 5;
+}
+
+function dl(id, name) {
+  const a = document.createElement('a');
+  a.download = name;
+  a.href = document.getElementById(id).toDataURL('image/png');
+  a.click();
+}
+
+// ── Icon 128×128 ───────────────────────────────────────────────────────────
+
+(function () {
+  const c = document.getElementById('icon');
+  const ctx = c.getContext('2d');
+  const W = 128, H = 128;
+
+  // Background gradient
+  const bg = ctx.createLinearGradient(0, 0, W, H);
+  bg.addColorStop(0, '#1a2744');
+  bg.addColorStop(1, '#0f172a');
+  ctx.fillStyle = bg;
+  rrect(ctx, 0, 0, W, H, 22);
+  ctx.fill();
+
+  // Warm glow
+  const glow = ctx.createRadialGradient(W * .4, H * .28, 0, W * .4, H * .28, W * .6);
+  glow.addColorStop(0, 'rgba(245,158,11,.2)');
+  glow.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = glow;
+  rrect(ctx, 0, 0, W, H, 22);
+  ctx.fill();
+
+  // Nest arcs
+  const cx = W / 2, baseY = H * .70;
+  ctx.lineCap = 'round';
+  const arcs = [
+    { r: W * .37, y: baseY,         lw: 5,   a: 1   },
+    { r: W * .27, y: baseY - H*.075, lw: 4,   a: .85 },
+    { r: W * .17, y: baseY - H*.15,  lw: 3.2, a: .7  },
+  ];
+  arcs.forEach(function(a) {
+    ctx.globalAlpha = a.a;
+    ctx.strokeStyle = '#f59e0b';
+    ctx.lineWidth = a.lw;
+    ctx.beginPath();
+    ctx.arc(cx, a.y, a.r, Math.PI, 0);
+    ctx.stroke();
+  });
+  ctx.globalAlpha = 1;
+
+  // Magnifying glass circle
+  const mx = cx - 1, my = H * .33, mr = H * .155;
+  ctx.strokeStyle = '#93c5fd';
+  ctx.lineWidth = 3.5;
+  ctx.beginPath();
+  ctx.arc(mx, my, mr, 0, Math.PI * 2);
+  ctx.stroke();
+
+  // Lens fill
+  ctx.fillStyle = 'rgba(147,197,253,.08)';
+  ctx.beginPath();
+  ctx.arc(mx, my, mr, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Handle
+  ctx.strokeStyle = '#93c5fd';
+  ctx.lineWidth = 3.5;
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.moveTo(mx + mr * .7,  my + mr * .7);
+  ctx.lineTo(mx + mr * 1.5, my + mr * 1.5);
+  ctx.stroke();
+
+  // R letter in lens
+  txt(ctx, 'R', mx, my, { size: 18, weight: '700', color: '#dbeafe', align: 'center', base: 'middle' });
+
+  // Corner shine
+  const shine = ctx.createRadialGradient(W * .2, H * .1, 0, W * .2, H * .1, W * .35);
+  shine.addColorStop(0, 'rgba(255,255,255,.08)');
+  shine.addColorStop(1, 'rgba(255,255,255,0)');
+  ctx.fillStyle = shine;
+  rrect(ctx, 0, 0, W, H, 22);
+  ctx.fill();
+})();
+
+// ── Screenshot 1: Dashboard Cluster View ──────────────────────────────────
+
+(function () {
+  const c = document.getElementById('ss1');
+  const ctx = c.getContext('2d');
+  const W = 640, H = 400;
+
+  fill(ctx, 0, 0, W, H, 0, '#0f172a');
+
+  // Sidebar
+  fill(ctx, 0, 0, 196, H, 0, '#0c1526');
+  ctx.fillStyle = '#1e293b'; ctx.fillRect(196, 0, 1, H);
+
+  txt(ctx, 'ResearchNest', 16, 16, { size: 14, weight: '700', color: '#f8fafc' });
+  dot(ctx, 10, 24, 5, '#f59e0b');
+  txt(ctx, 'SESSIONS', 16, 54, { size: 9, weight: '600', color: '#475569' });
+
+  var sessions = [
+    { name: 'React Performance', sub: '10 tabs · 3 clusters', color: '#3b82f6', active: true },
+    { name: 'ML Fundamentals',   sub: '8 tabs · 2 clusters',  color: '#8b5cf6', active: false },
+    { name: 'Kubernetes Setup',  sub: '6 tabs · 2 clusters',  color: '#10b981', active: false },
+    { name: 'CSS Grid Guide',    sub: '5 tabs · 1 cluster',   color: '#f59e0b', active: false },
+  ];
+  sessions.forEach(function(s, i) {
+    var sy = 70 + i * 46;
+    if (s.active) {
+      fill(ctx, 6, sy - 4, 184, 38, 6, '#1e3a5f');
+      outline(ctx, 6, sy - 4, 184, 38, 6, '#3b82f6', 1);
+    }
+    dot(ctx, 20, sy + 8, 4, s.color);
+    txt(ctx, s.name, 32, sy,    { size: 12, weight: s.active ? '600' : '400', color: s.active ? '#f8fafc' : '#94a3b8' });
+    txt(ctx, s.sub,  32, sy+16, { size: 9,  color: '#475569' });
+  });
+
+  // Main header
+  txt(ctx, 'React Performance Research', 212, 14, { size: 15, weight: '700', color: '#f8fafc' });
+  txt(ctx, 'Dec 15, 2024  ·  10 tabs  ·  3 clusters  ·  47 min', 212, 34, { size: 11, color: '#64748b' });
+  ctx.fillStyle = '#1e293b'; ctx.fillRect(204, 56, W - 212, 1);
+
+  // Cluster cards
+  var clusters = [
+    { title: 'React Hooks & State', color: '#3b82f6', tabs: ['react.dev/hooks', 'useState patterns', 'useReducer', 'Custom hooks'] },
+    { title: 'Performance',         color: '#10b981', tabs: ['Web Vitals', 'React.memo docs', 'useMemo tips'] },
+    { title: 'Testing',             color: '#8b5cf6', tabs: ['Jest docs', 'Vitest guide', 'RTL examples'] },
+  ];
+  var cw = 132, ch = 226, ctop = 68;
+  clusters.forEach(function(cl, i) {
+    var cx2 = 210 + i * (cw + 10);
+    card(ctx, cx2, ctop, cw, ch, 8);
+    fill(ctx, cx2, ctop, cw, 34, 8, cl.color + '22');
+    ctx.fillStyle = cl.color; ctx.fillRect(cx2, ctop + 8, 3, 18);
+    txt(ctx, cl.title, cx2 + 10, ctop + 8,  { size: 11, weight: '600', color: '#f8fafc' });
+    txt(ctx, cl.tabs.length + ' tabs', cx2 + 10, ctop + 20, { size: 9, color: cl.color });
+    cl.tabs.forEach(function(tab, j) {
+      var ty = ctop + 44 + j * 44;
+      card(ctx, cx2 + 6, ty, cw - 12, 38, 6);
+      dot(ctx, cx2 + 16, ty + 10, 4, cl.color);
+      var name = tab.length > 13 ? tab.slice(0, 13) + '…' : tab;
+      txt(ctx, name,      cx2 + 26, ty + 5,  { size: 10, weight: '500', color: '#e2e8f0' });
+      txt(ctx, 'react.dev', cx2 + 26, ty + 19, { size: 9, color: '#475569' });
+    });
+  });
+
+  // AI insight banner
+  fill(ctx, 210, 308, 414, 72, 8, '#1a2744');
+  outline(ctx, 210, 308, 414, 72, 8, '#f59e0b55', 1);
+  txt(ctx, '✦ AI Session Insight', 226, 318, { size: 11, weight: '600', color: '#f59e0b' });
+  txt(ctx, 'Focused on React performance — hooks, memoization, and Web Vitals.', 226, 334, { size: 10, color: '#94a3b8' });
+  txt(ctx, 'Suggested next: React Profiler and bundle analyzer docs.', 226, 350, { size: 10, color: '#94a3b8' });
+  txt(ctx, 'Powered by Gemini 1.5 Flash', 226, 366, { size: 9, color: '#475569' });
+
+  fill(ctx, 562, 314, 50, 24, 6, '#1d4ed8');
+  txt(ctx, 'Export', 587, 326, { size: 11, weight: '600', color: '#fff', align: 'center', base: 'middle' });
+})();
+
+// ── Screenshot 2: Popup Active Session ────────────────────────────────────
+
+(function () {
+  const c = document.getElementById('ss2');
+  const ctx = c.getContext('2d');
+  const W = 640, H = 400;
+
+  fill(ctx, 0, 0, W, H, 0, '#0f172a');
+
+  // Subtle bg glow
+  var glow = ctx.createRadialGradient(W/2, H/2, 0, W/2, H/2, 260);
+  glow.addColorStop(0, 'rgba(59,130,246,.07)');
+  glow.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = glow; ctx.fillRect(0, 0, W, H);
+
+  var pw = 320, ph = 340, px = (W - pw) / 2, py = (H - ph) / 2;
+
+  // Shadow
+  ctx.shadowColor = 'rgba(0,0,0,.55)';
+  ctx.shadowBlur = 28;
+  ctx.shadowOffsetY = 8;
+  fill(ctx, px, py, pw, ph, 12, '#0f172a');
+  ctx.shadowColor = 'rgba(0,0,0,0)'; ctx.shadowBlur = 0; ctx.shadowOffsetY = 0;
+
+  outline(ctx, px, py, pw, ph, 12, '#334155', 1);
+
+  // Header strip
+  fill(ctx, px, py, pw, 50, 12, '#1e293b');
+  ctx.fillStyle = '#1e293b'; ctx.fillRect(px, py + 30, pw, 20);
+  ctx.fillStyle = '#334155'; ctx.fillRect(px, py + 50, pw, 1);
+
+  dot(ctx, px + 22, py + 25, 7, '#f59e0b');
+  txt(ctx, 'ResearchNest', px + 36, py + 16, { size: 14, weight: '700', color: '#f8fafc' });
+  txt(ctx, 'Session Active', px + 36, py + 32, { size: 10, color: '#f59e0b' });
+  txt(ctx, '⚙', px + pw - 28, py + 16, { size: 17, color: '#475569' });
+
+  // Active banner
+  fill(ctx, px + 12, py + 62, pw - 24, 46, 8, '#1e3a5f');
+  outline(ctx, px + 12, py + 62, pw - 24, 46, 8, '#3b82f622', 1);
+  dot(ctx, px + 26, py + 85, 5, '#22d3ee');
+  txt(ctx, 'Recording Research Session', px + 38, py + 74, { size: 12, weight: '600', color: '#e0f2fe' });
+  txt(ctx, 'Started 23 min ago', px + 38, py + 88, { size: 10, color: '#64748b' });
+  fill(ctx, px + pw - 70, py + 70, 54, 26, 13, '#0e4166');
+  txt(ctx, '23:14', px + pw - 43, py + 83, { size: 12, weight: '700', color: '#38bdf8', align: 'center', base: 'middle' });
+
+  // Stats
+  var stats = [{ v: '12', l: 'Tabs' }, { v: '3', l: 'Clusters' }, { v: '4', l: 'Dupes' }];
+  var sw = (pw - 24) / 3;
+  stats.forEach(function(s, i) {
+    var sx = px + 12 + i * sw;
+    card(ctx, sx + 3, py + 120, sw - 6, 52, 8);
+    txt(ctx, s.v, sx + sw / 2, py + 130, { size: 22, weight: '700', color: '#f8fafc', align: 'center' });
+    txt(ctx, s.l, sx + sw / 2, py + 154, { size: 10, color: '#64748b', align: 'center' });
+  });
+
+  txt(ctx, 'RECENT TABS', px + 12, py + 186, { size: 9, weight: '600', color: '#475569' });
+
+  var tabs = [
+    { title: 'React Docs — useEffect', domain: 'react.dev',        time: '8m', color: '#3b82f6' },
+    { title: 'Web Vitals Explained',   domain: 'web.dev',          time: '12m', color: '#10b981' },
+    { title: 'useMemo vs useCallback', domain: 'kentcdodds.com',   time: '3m', color: '#3b82f6' },
+  ];
+  tabs.forEach(function(t, i) {
+    var ty = py + 202 + i * 34;
+    dot(ctx, px + 22, ty + 11, 4, t.color);
+    txt(ctx, t.title, px + 34, ty + 4,  { size: 11, weight: '500', color: '#e2e8f0' });
+    txt(ctx, t.domain, px + 34, ty + 18, { size: 9, color: '#475569' });
+    txt(ctx, t.time, px + pw - 18, ty + 11, { size: 10, color: '#475569', align: 'right', base: 'middle' });
+  });
+
+  // CTA
+  fill(ctx, px + 12, py + ph - 54, pw - 24, 38, 8, '#1d4ed8');
+  txt(ctx, 'End Session & Cluster Tabs', px + pw / 2, py + ph - 35, { size: 13, weight: '600', color: '#fff', align: 'center', base: 'middle' });
+  txt(ctx, 'Open Dashboard', px + pw / 2, py + ph - 9, { size: 11, color: '#3b82f6', align: 'center', base: 'bottom' });
+})();
+
+// ── Screenshot 3: Session Archive ─────────────────────────────────────────
+
+(function () {
+  const c = document.getElementById('ss3');
+  const ctx = c.getContext('2d');
+  const W = 640, H = 400;
+
+  fill(ctx, 0, 0, W, H, 0, '#0f172a');
+
+  fill(ctx, 0, 0, W, 54, 0, '#0c1526');
+  ctx.fillStyle = '#1e293b'; ctx.fillRect(0, 54, W, 1);
+
+  dot(ctx, 15, 27, 7, '#f59e0b');
+  txt(ctx, 'ResearchNest', 30, 14, { size: 16, weight: '700', color: '#f8fafc' });
+  txt(ctx, 'Research Archive', 30, 32, { size: 10, color: '#64748b' });
+
+  fill(ctx, W - 252, 13, 202, 28, 6, '#1e293b');
+  outline(ctx, W - 252, 13, 202, 28, 6, '#334155', 1);
+  txt(ctx, '🔍  Search sessions...', W - 244, 27, { size: 11, color: '#475569', base: 'middle' });
+
+  fill(ctx, W - 40, 13, 28, 28, 6, '#1d4ed8');
+  txt(ctx, '+', W - 26, 27, { size: 16, weight: '700', color: '#fff', align: 'center', base: 'middle' });
+
+  txt(ctx, 'RECENT SESSIONS', 18, 68, { size: 10, weight: '600', color: '#475569' });
+
+  var sessions = [
+    { name: 'React Performance Research',   date: 'Today, 2:14 PM',        tabs: 10, clusters: 3, dur: '47m',    color: '#3b82f6', tags: ['React', 'Performance'] },
+    { name: 'Machine Learning Fundamentals', date: 'Yesterday, 10:30 AM', tabs: 8,  clusters: 2, dur: '1h 23m', color: '#8b5cf6', tags: ['ML', 'Python'] },
+    { name: 'Kubernetes Deployment Guide',  date: 'Dec 14, 4:00 PM',      tabs: 6,  clusters: 2, dur: '38m',    color: '#10b981', tags: ['K8s', 'DevOps'] },
+    { name: 'CSS Grid & Layout Systems',    date: 'Dec 12, 11:15 AM',     tabs: 5,  clusters: 1, dur: '22m',    color: '#f59e0b', tags: ['CSS', 'Design'] },
+  ];
+
+  var tagColors = { React: '#3b82f6', Performance: '#10b981', ML: '#8b5cf6', Python: '#06b6d4', 'K8s': '#0ea5e9', DevOps: '#6366f1', CSS: '#f59e0b', Design: '#ec4899' };
+
+  sessions.forEach(function(s, i) {
+    var sy = 86 + i * 74;
+    card(ctx, 14, sy, W - 28, 66, 8);
+    ctx.fillStyle = s.color; ctx.fillRect(14, sy + 8, 3, 50);
+    txt(ctx, s.name, 28, sy + 10, { size: 13, weight: '600', color: '#f8fafc' });
+    txt(ctx, s.date, 28, sy + 26, { size: 10, color: '#64748b' });
+    txt(ctx, '📄 ' + s.tabs + ' tabs', 28, sy + 44, { size: 10, color: '#94a3b8' });
+    txt(ctx, '⬡ ' + s.clusters + ' clusters', 100, sy + 44, { size: 10, color: '#94a3b8' });
+    txt(ctx, '⏱ ' + s.dur, 196, sy + 44, { size: 10, color: '#94a3b8' });
+    var tx = W - 168;
+    s.tags.forEach(function(tag) {
+      var tc = tagColors[tag] || '#94a3b8';
+      fill(ctx, tx, sy + 42, 54, 18, 9, tc + '22');
+      txt(ctx, tag, tx + 6, sy + 51, { size: 9, color: tc, base: 'middle' });
+      tx += 60;
+    });
+    txt(ctx, '›', W - 24, sy + 33, { size: 20, color: '#334155', align: 'center', base: 'middle' });
+  });
+})();
+
+// ── Screenshot 4: AI Summary & Tab Detail ─────────────────────────────────
+
+(function () {
+  const c = document.getElementById('ss4');
+  const ctx = c.getContext('2d');
+  const W = 640, H = 400;
+
+  fill(ctx, 0, 0, W, H, 0, '#0f172a');
+
+  fill(ctx, 0, 0, W, 50, 0, '#0c1526');
+  ctx.fillStyle = '#1e293b'; ctx.fillRect(0, 50, W, 1);
+  txt(ctx, '← React Performance Research', 16, 14, { size: 13, weight: '600', color: '#94a3b8' });
+  txt(ctx, 'Dec 15, 2024  ·  10 tabs  ·  47 min total', 16, 30, { size: 10, color: '#475569' });
+
+  fill(ctx, W - 92, 13, 76, 26, 6, '#1e293b');
+  outline(ctx, W - 92, 13, 76, 26, 6, '#334155', 1);
+  txt(ctx, '↓ Export', W - 54, 26, { size: 11, color: '#94a3b8', align: 'center', base: 'middle' });
+
+  // AI Summary card
+  fill(ctx, 14, 60, W - 28, 90, 10, '#1a2744');
+  outline(ctx, 14, 60, W - 28, 90, 10, '#f59e0b44', 1);
+  txt(ctx, '✦ AI Session Insight', 30, 74, { size: 12, weight: '600', color: '#f59e0b' });
+  txt(ctx, 'Powered by Gemini 1.5 Flash', W - 28, 74, { size: 9, color: '#475569', align: 'right' });
+  txt(ctx, 'This session explored React performance patterns with emphasis on hooks optimization and', 30, 94,  { size: 10.5, color: '#cbd5e1' });
+  txt(ctx, 'memoization strategies. Key topics: useMemo, useCallback, Web Vitals, and testing setup.', 30, 110, { size: 10.5, color: '#cbd5e1' });
+  txt(ctx, 'Recommended: Review React Profiler docs for deeper bundle analysis.', 30, 128, { size: 10, color: '#94a3b8' });
+
+  // Cluster header
+  fill(ctx, 14, 162, W - 28, 30, 8, '#1e3a5f22');
+  ctx.fillStyle = '#3b82f6'; ctx.fillRect(14, 162, 3, 30);
+  txt(ctx, 'React Hooks & State', 24, 170, { size: 12, weight: '600', color: '#93c5fd' });
+  txt(ctx, '4 tabs · avg 11 min', 24, 184, { size: 9, color: '#475569' });
+  pill(ctx, 'longest focus', W - 136, 168, '#f59e0b', '#f59e0b22');
+
+  // Tab rows
+  var tabs = [
+    { title: 'React Hooks Reference',   domain: 'react.dev',          time: 14 },
+    { title: 'useState vs useReducer',  domain: 'kentcdodds.com',     time: 11 },
+    { title: 'Building Custom Hooks',   domain: 'usehooks.com',       time: 9  },
+    { title: 'Rules of Hooks — ESLint', domain: 'github.com',         time: 7  },
+  ];
+  tabs.forEach(function(t, i) {
+    var ty = 198 + i * 42;
+    fill(ctx, 18, ty, W - 36, 36, 6, '#1e293b');
+    ctx.fillStyle = '#334155'; ctx.fillRect(18, ty + 36, W - 36, 1);
+    fill(ctx, 28, ty + 8, 20, 20, 3, '#3b82f622');
+    txt(ctx, 'R', 38, ty + 18, { size: 10, weight: '700', color: '#3b82f6', align: 'center', base: 'middle' });
+    txt(ctx, t.title,  56, ty + 8,  { size: 11, weight: '500', color: '#e2e8f0' });
+    txt(ctx, t.domain, 56, ty + 22, { size: 9,  color: '#475569' });
+    var bw = 64, bx = W - 110, by2 = ty + 14;
+    fill(ctx, bx, by2, bw, 6, 3, '#334155');
+    fill(ctx, bx, by2, bw * (t.time / 16), 6, 3, '#3b82f6');
+    txt(ctx, t.time + 'm', W - 36, ty + 18, { size: 10, color: '#94a3b8', align: 'right', base: 'middle' });
+    if (i < 2) dot(ctx, W - 22, ty + 18, 3, '#10b981');
+  });
+})();
+
+// ── Screenshot 5: Settings ─────────────────────────────────────────────────
+
+(function () {
+  const c = document.getElementById('ss5');
+  const ctx = c.getContext('2d');
+  const W = 640, H = 400;
+
+  fill(ctx, 0, 0, W, H, 0, '#0f172a');
+
+  fill(ctx, 0, 0, W, 54, 0, '#0c1526');
+  ctx.fillStyle = '#1e293b'; ctx.fillRect(0, 54, W, 1);
+  txt(ctx, '⚙', 18, 17, { size: 20 });
+  txt(ctx, 'Settings', 44, 14, { size: 16, weight: '700', color: '#f8fafc' });
+  txt(ctx, 'Customize ResearchNest behavior', 44, 32, { size: 10, color: '#64748b' });
+
+  var cw = (W - 48) / 2, rx = 16 + cw + 16;
+
+  // Left column
+  txt(ctx, 'DETECTION', 16, 68, { size: 9, weight: '600', color: '#475569' });
+
+  // Tab threshold
+  card(ctx, 16, 82, cw, 70, 8);
+  txt(ctx, 'Session Threshold', 28, 92,  { size: 12, weight: '600', color: '#f8fafc' });
+  txt(ctx, 'Minimum tabs to trigger detection', 28, 108, { size: 10, color: '#64748b' });
+  var slw = cw - 40, sl1x = 28, sl1y = 128;
+  fill(ctx, sl1x, sl1y, slw, 4, 2, '#334155');
+  fill(ctx, sl1x, sl1y, slw * .5, 4, 2, '#3b82f6');
+  fill(ctx, sl1x + slw * .5 - 8, sl1y - 6, 16, 16, 8, '#3b82f6');
+  txt(ctx, '8 tabs', sl1x + slw + 8, sl1y - 2, { size: 11, weight: '600', color: '#60a5fa' });
+
+  // Time window
+  card(ctx, 16, 162, cw, 70, 8);
+  txt(ctx, 'Time Window', 28, 172, { size: 12, weight: '600', color: '#f8fafc' });
+  txt(ctx, 'Tab activity window for detection', 28, 188, { size: 10, color: '#64748b' });
+  var sl2y = 210;
+  fill(ctx, sl1x, sl2y, slw, 4, 2, '#334155');
+  fill(ctx, sl1x, sl2y, slw * .33, 4, 2, '#3b82f6');
+  fill(ctx, sl1x + slw * .33 - 8, sl2y - 6, 16, 16, 8, '#3b82f6');
+  txt(ctx, '5 min', sl1x + slw + 8, sl2y - 2, { size: 11, weight: '600', color: '#60a5fa' });
+
+  // Theme toggle
+  card(ctx, 16, 242, cw, 56, 8);
+  txt(ctx, 'Theme', 28, 252, { size: 12, weight: '600', color: '#f8fafc' });
+  txt(ctx, 'Interface color scheme', 28, 268, { size: 10, color: '#64748b' });
+  fill(ctx, 28, 268, 86, 22, 11, '#1e3a5f');
+  outline(ctx, 28, 268, 86, 22, 11, '#3b82f655', 1);
+  fill(ctx, 28, 268, 44, 22, 11, '#3b82f6');
+  txt(ctx, 'Dark',  50, 279, { size: 10, weight: '600', color: '#fff', align: 'center', base: 'middle' });
+  txt(ctx, 'Light', 93, 279, { size: 10, color: '#475569', align: 'center', base: 'middle' });
+
+  // Right column
+  txt(ctx, 'GEMINI AI', rx, 68, { size: 9, weight: '600', color: '#475569' });
+
+  card(ctx, rx, 82, cw, 108, 8);
+  txt(ctx, 'Gemini API Key', rx + 12, 92,  { size: 12, weight: '600', color: '#f8fafc' });
+  txt(ctx, 'For AI summaries and embeddings', rx + 12, 108, { size: 10, color: '#64748b' });
+  fill(ctx, rx + 12, 122, cw - 24, 30, 6, '#0f172a');
+  outline(ctx, rx + 12, 122, cw - 24, 30, 6, '#334155', 1);
+  txt(ctx, 'AIzaSy••••••••••••••••••••', rx + 22, 137, { size: 11, color: '#475569', base: 'middle' });
+  fill(ctx, rx + 12, 162, 82, 20, 10, '#10b98120');
+  dot(ctx, rx + 22, 172, 3, '#10b981');
+  txt(ctx, '✓ Verified', rx + 28, 172, { size: 10, color: '#10b981', base: 'middle' });
+  fill(ctx, rx + cw - 62, 162, 50, 20, 6, '#1e293b');
+  outline(ctx, rx + cw - 62, 162, 50, 20, 6, '#334155', 1);
+  txt(ctx, 'Test', rx + cw - 37, 172, { size: 10, color: '#94a3b8', align: 'center', base: 'middle' });
+
+  // Offline note
+  card(ctx, rx, 200, cw, 56, 8);
+  txt(ctx, 'Offline Fallback', rx + 12, 210, { size: 12, weight: '600', color: '#f8fafc' });
+  txt(ctx, 'Works without an API key using built-in', rx + 12, 226, { size: 10, color: '#64748b' });
+  txt(ctx, 'TF-IDF clustering (no internet needed).', rx + 12, 240, { size: 10, color: '#64748b' });
+
+  // Storage row
+  txt(ctx, 'STORAGE', 16, 312, { size: 9, weight: '600', color: '#475569' });
+  card(ctx, 16, 326, W - 32, 50, 8);
+  txt(ctx, 'Local Storage', 28, 336, { size: 12, weight: '600', color: '#f8fafc' });
+  txt(ctx, '3.2 MB of 10 MB', 28, 352, { size: 10, color: '#64748b' });
+  fill(ctx, W - 210, 336, 166, 8, 4, '#334155');
+  fill(ctx, W - 210, 336, 166 * .32, 8, 4, '#3b82f6');
+  txt(ctx, '32%', W - 36, 340, { size: 10, color: '#94a3b8', align: 'right' });
+  fill(ctx, W - 140, 352, 120, 18, 6, '#7f1d1d22');
+  outline(ctx, W - 140, 352, 120, 18, 6, '#ef444444', 1);
+  txt(ctx, 'Clear all sessions', W - 80, 361, { size: 9, color: '#f87171', align: 'center', base: 'middle' });
+})();
+</script>
+</body>
+</html>

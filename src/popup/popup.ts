@@ -11,6 +11,7 @@ const statePrompt = $<HTMLDivElement>("state-prompt");
 const progressOverlay = $<HTMLDivElement>("progress-overlay");
 const progressStep = $<HTMLParagraphElement>("progress-step");
 const progressDetail = $<HTMLParagraphElement>("progress-detail");
+const progressFill = $<HTMLDivElement>("progress-fill");
 
 function show(state: PopupState) {
   stateIdle.classList.toggle("hidden", state !== "idle");
@@ -18,9 +19,10 @@ function show(state: PopupState) {
   statePrompt.classList.toggle("hidden", state !== "prompt");
 }
 
-function showProgress(step: string, detail = "") {
+function showProgress(step: string, detail = "", pct?: number) {
   progressStep.textContent = step;
   progressDetail.textContent = detail;
+  if (pct !== undefined) progressFill.style.width = `${pct}%`;
   progressOverlay.classList.remove("hidden");
 }
 
@@ -102,10 +104,15 @@ async function render() {
 
 chrome.runtime.onMessage.addListener((msg) => {
   if (msg.type === "EXTRACTION_PROGRESS") {
-    showProgress("Extracting content…", `${msg.done} / ${msg.total} tabs`);
+    if (msg.done === msg.total && msg.total > 0) {
+      showProgress("Clustering tabs…", `Grouping ${msg.total} tabs`, 75);
+    } else {
+      const pct = msg.total > 0 ? 10 + Math.round((msg.done / msg.total) * 55) : 10;
+      showProgress("Extracting content…", `${msg.done} / ${msg.total} tabs`, pct);
+    }
   }
   if (msg.type === "CLUSTER_COMPLETE") {
-    showProgress("Done!", `${msg.clusterCount} cluster${msg.clusterCount !== 1 ? "s" : ""} created`);
+    showProgress("Done!", `${msg.clusterCount} cluster${msg.clusterCount !== 1 ? "s" : ""} created`, 100);
     setTimeout(() => {
       hideProgress();
       void render();
@@ -122,7 +129,7 @@ chrome.runtime.onMessage.addListener((msg) => {
 // ── Start clustering ───────────────────────────────────────────────────────────
 
 async function startClustering() {
-  showProgress("Starting…", "");
+  showProgress("Starting…", "", 5);
   const res = await new Promise<{ sessionId?: string; clusterCount?: number; error?: string }>((resolve) => {
     chrome.runtime.sendMessage({ type: "START_AND_CLUSTER" }, (r) => resolve(r ?? {}));
   });
@@ -141,7 +148,7 @@ $("btn-confirm-start").addEventListener("click", () => { void startClustering();
 $("btn-recluster").addEventListener("click", async () => {
   const state = await getState();
   if (!state.activeSessionId) return;
-  showProgress("Extracting new tabs…", "");
+  showProgress("Extracting new tabs…", "", 5);
   chrome.runtime.sendMessage(
     { type: "RECLUSTER_SESSION", sessionId: state.activeSessionId },
     () => {}

@@ -3,7 +3,6 @@
 import * as storage from "../lib/storage.js";
 import { buildCorpusTFIDF } from "../lib/tfidf.js";
 import { clusterTabs, autoNameSession, findDuplicates } from "../lib/clustering.js";
-import { batchEmbeddings } from "../lib/embeddings.js";
 import { createTabGroups } from "../lib/tab-groups.js";
 import type {
   TabData,
@@ -452,19 +451,6 @@ async function clusterSession(session: ResearchSession): Promise<void> {
     }))
   );
 
-  if (settings.aiEnabled) {
-    const apiKey = await storage.getGeminiKey();
-    if (apiKey) {
-      const texts = tabs.map((t) =>
-        [t.title, t.metaDescription, t.headings.slice(0, 5).join(", "), t.bodySnippet.slice(0, 300)].join(" ")
-      );
-      const embeddings = await batchEmbeddings(texts, apiKey);
-      tabs.forEach((tab, i) => {
-        if (embeddings[i].length > 0) tab.embedding = embeddings[i];
-      });
-    }
-  }
-
   tabs.forEach((tab, i) => { tab.tfidfVector = vectors[i]; });
 
   const dupeIndices = findDuplicates(tabs, vectors);
@@ -478,28 +464,31 @@ async function clusterSession(session: ResearchSession): Promise<void> {
   const tabUrlMap = new Map(tabs.map((t) => [t.tabId, t.url]));
   await createTabGroups(clusters, tabUrlMap);
 
-  tabs.forEach((tab) => { delete tab.embedding; delete tab.tfidfVector; });
+  tabs.forEach((tab) => { delete tab.tfidfVector; });
 
   await storage.saveSession(session);
 
   if (settings.aiEnabled) {
     const apiKey = await storage.getGeminiKey();
     if (apiKey) {
-      try {
-        const { summarizeSession } = await import("../lib/summarizer.js");
-        const result = await summarizeSession(
-          session.title,
-          clusters.map((c) => c.label),
-          tabs.map((t) => t.title),
-          apiKey
-        );
-        session.summary = result.summary;
-        session.takeaways = result.takeaways;
-        session.openQuestions = result.openQuestions;
-        await storage.saveSession(session);
-      } catch {
-        // AI summary failed — continue without it
-      }
+      void import("../lib/summarizer.js")
+        .then(({ summarizeSession }) =>
+          summarizeSession(
+            session.title,
+            clusters.map((c) => c.label),
+            tabs.map((t) => t.title),
+            apiKey
+          )
+        )
+        .then(async (result) => {
+          const s = await storage.getSession(session.sessionId);
+          if (!s) return;
+          s.summary = result.summary;
+          s.takeaways = result.takeaways;
+          s.openQuestions = result.openQuestions;
+          await storage.saveSession(s);
+        })
+        .catch(() => {});
     }
   }
 }

@@ -13,17 +13,6 @@ function cosineDistanceSparse(
   return 1 - cosineSimilarity(a, b);
 }
 
-function cosineDistanceDense(a: number[], b: number[]): number {
-  let dot = 0, na = 0, nb = 0;
-  for (let i = 0; i < a.length; i++) {
-    dot += a[i] * b[i];
-    na += a[i] * a[i];
-    nb += b[i] * b[i];
-  }
-  if (na === 0 || nb === 0) return 1;
-  return 1 - dot / (Math.sqrt(na) * Math.sqrt(nb));
-}
-
 // ── K-means++ initialization ──────────────────────────────────────────────────
 
 function kmeansppInitSparse(
@@ -50,29 +39,6 @@ function kmeansppInitSparse(
   return centers;
 }
 
-function kmeansppInitDense(
-  points: number[][],
-  k: number
-): number[][] {
-  const centers: number[][] = [];
-  centers.push([...points[Math.floor(Math.random() * points.length)]]);
-
-  while (centers.length < k) {
-    const dists = points.map((p) =>
-      Math.min(...centers.map((c) => cosineDistanceDense(p, c)))
-    );
-    const total = dists.reduce((a, b) => a + b, 0);
-    let r = Math.random() * total;
-    let chosen = 0;
-    for (let i = 0; i < dists.length; i++) {
-      r -= dists[i];
-      if (r <= 0) { chosen = i; break; }
-    }
-    centers.push([...points[chosen]]);
-  }
-  return centers;
-}
-
 // ── Centroid computation ──────────────────────────────────────────────────────
 
 function centroidSparse(group: Record<string, number>[]): Record<string, number> {
@@ -82,15 +48,6 @@ function centroidSparse(group: Record<string, number>[]): Record<string, number>
     for (const [term, val] of Object.entries(vec)) {
       result[term] = (result[term] ?? 0) + val / group.length;
     }
-  }
-  return result;
-}
-
-function centroidDense(group: number[][]): number[] {
-  if (group.length === 0) return [];
-  const result = new Array<number>(group[0].length).fill(0);
-  for (const vec of group) {
-    for (let i = 0; i < vec.length; i++) result[i] += vec[i] / group.length;
   }
   return result;
 }
@@ -122,36 +79,6 @@ function kmeansSpare(
     for (let j = 0; j < k; j++) {
       const group = points.filter((_, i) => assignments[i] === j);
       if (group.length > 0) centers[j] = centroidSparse(group);
-    }
-  }
-  return assignments;
-}
-
-function kmeansDense(
-  points: number[][],
-  k: number,
-  maxIter = 30
-): number[] {
-  let centers = kmeansppInitDense(points, k);
-  let assignments = new Array<number>(points.length).fill(0);
-
-  for (let iter = 0; iter < maxIter; iter++) {
-    const newAssignments = points.map((p) => {
-      let best = 0, bestDist = Infinity;
-      for (let j = 0; j < centers.length; j++) {
-        const d = cosineDistanceDense(p, centers[j]);
-        if (d < bestDist) { bestDist = d; best = j; }
-      }
-      return best;
-    });
-
-    const changed = newAssignments.some((a, i) => a !== assignments[i]);
-    assignments = newAssignments;
-    if (!changed) break;
-
-    for (let j = 0; j < k; j++) {
-      const group = points.filter((_, i) => assignments[i] === j);
-      if (group.length > 0) centers[j] = centroidDense(group);
     }
   }
   return assignments;
@@ -266,19 +193,8 @@ export function clusterTabs(
     }];
   }
 
-  // Use embeddings if available for all tabs, otherwise TF-IDF
-  const hasEmbeddings = tabs.every((t) => t.embedding && t.embedding.length > 0);
-  let assignments: number[];
-  let k: number;
-
-  if (hasEmbeddings) {
-    const embeddings = tabs.map((t) => t.embedding!);
-    k = estimateK(tfidfVectors, tabs.length);
-    assignments = kmeansDense(embeddings, k);
-  } else {
-    k = estimateK(tfidfVectors, tabs.length);
-    assignments = kmeansSpare(tfidfVectors, k);
-  }
+  const k = estimateK(tfidfVectors, tabs.length);
+  const assignments = kmeansSpare(tfidfVectors, k);
 
   // Build clusters
   const clusterMap = new Map<number, number[]>();

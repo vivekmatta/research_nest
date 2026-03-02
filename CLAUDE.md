@@ -2,7 +2,7 @@
 
 ## What This Project Is
 
-ResearchNest is a Chrome Extension (MV3) that automatically detects research sessions, clusters open tabs by topic using TF-IDF and k-means++ clustering, and creates a structured, searchable archive of those sessions. It integrates with the Google Gemini API (free tier) for AI-powered summaries and embeddings, with a full offline fallback.
+ResearchNest is a Chrome Extension (MV3) that automatically detects research sessions, clusters open tabs by topic using TF-IDF and k-means++ clustering, and creates a structured, searchable archive of those sessions. It integrates with the Google Gemini API (free tier) for AI-powered summaries, with a full offline fallback.
 
 ---
 
@@ -69,8 +69,7 @@ git push
 - [x] Content script extracts title, meta description, headings (h1–h3), body snippet
 - [x] Pure-JS TF-IDF engine with stopword filtering and title boosting (3×)
 - [x] K-means++ clustering with elbow-method auto-K selection (k=2–6)
-- [x] Gemini `gemini-embedding-001` for AI embeddings (768-dim, replaces deprecated `text-embedding-004`)
-- [x] Gemini `gemini-1.5-flash` for tab summaries and session insights
+- [x] Gemini `gemini-1.5-flash` for tab summaries and session insights (fire-and-forget; does not block clustering)
 - [x] Full offline fallback (sentence scoring by position + keyword overlap)
 - [x] Chrome Tab Groups API: colored groups with keyword labels
 - [x] Duplicate tab detection (same domain + cosine similarity > 0.85)
@@ -90,6 +89,8 @@ git push
 - [x] **Tab pills** — compact clickable rounded cards (favicon + title) replacing old list rows
 - [x] **Tab detail modal** — click any pill to open overlay with full title, URL, dwell time, AI bullet summary, Open in New Tab button
 - [x] **Upgraded summary panel** — subtle green gradient background, arrow-prefix bullet styling
+- [x] **Fast clustering** — removed Gemini embedding calls from clustering pipeline; pure TF-IDF k-means++ completes in <1s; session summary is fire-and-forget
+- [x] **Popup progress bar** — animated bar with labeled phases: Starting (5%) → Extracting (10–65%) → Clustering (75%) → Done (100%)
 
 ### Known Improvements To Build Next
 - [ ] Tag sessions with custom labels (in addition to auto-name)
@@ -109,7 +110,7 @@ git push
 ### What has been done
 
 #### Build & packaging
-- [x] `npm run build` — clean build, 17 modules, no errors
+- [x] `npm run build` — clean build, 16 modules, no errors
 - [x] `dist/` folder zipped as `researchnest.zip` and uploaded to the Web Store dashboard
 - [x] Remote repo configured: `git@github.com:vivekmatta/research_nest.git`
 - [x] All commits pushed to `origin/master`
@@ -176,8 +177,8 @@ git push
 | `src/lib/storage.ts` | `chrome.storage` CRUD + API key obfuscation |
 | `src/lib/tfidf.ts` | TF-IDF tokenization, IDF, cosine similarity |
 | `src/lib/clustering.ts` | K-means++, elbow method, duplicate detection, reading order |
-| `src/lib/embeddings.ts` | Gemini `gemini-embedding-001` API wrapper (768-dim, outputDimensionality param) |
-| `src/lib/summarizer.ts` | Gemini `gemini-1.5-flash` + offline sentence scoring |
+| `src/lib/embeddings.ts` | Gemini `gemini-embedding-001` API wrapper (retained but no longer called during clustering) |
+| `src/lib/summarizer.ts` | Gemini `gemini-1.5-flash` + offline sentence scoring (fire-and-forget after clustering) |
 | `src/lib/tab-groups.ts` | Chrome Tab Groups API (skips non-groupable tabs) |
 | `src/lib/exporter.ts` | Markdown export formatter |
 
@@ -191,13 +192,12 @@ Tab opened
     → injects content-script into all open tabs
     → Promise countdown latch waits for PAGE_CONTENT messages (5s timeout)
     → buildCorpusTFIDF() on all tabs
-    → (optional) batchEmbeddings() via Gemini API
-    → clusterTabs() → k-means++ assignments
+    → clusterTabs() → sparse TF-IDF k-means++ assignments (<1s)
     → createTabGroups() → Chrome visual groups
     → autoNameSession() → session title
-    → (optional) summarizeSession() via Gemini API
     → saveSession() to chrome.storage.local
     → broadcasts CLUSTER_COMPLETE → popup shows "Done! N clusters"
+    → summarizeSession() fires asynchronously (does not block UI)
 
 New tab opened during active session:
   → appended to session.tabs + state.newTabsSinceCluster
@@ -214,7 +214,7 @@ User done:
 | `startAndClusterSession()` | Full one-shot: extract → cluster → tab groups |
 | `reclusterSession(sessionId)` | Re-run clustering after new tabs added |
 | `archiveSession(sessionId)` | Save session without re-clustering, clear active state |
-| `clusterSession(session)` | Internal: TF-IDF + embeddings + k-means++ + tab groups + AI summary |
+| `clusterSession(session)` | Internal: TF-IDF + sparse k-means++ + tab groups; AI summary fires async |
 | `waitForContentExtraction(id, n, ms)` | Promise latch: resolves when n PAGE_CONTENT messages arrive or timeout |
 
 ### Message Bus (popup/dashboard → service worker)

@@ -64,12 +64,12 @@ git push
 
 ## Project Plan & Feature Checklist
 
-### Core Features (Implemented in v1.0)
+### Core Features (Implemented)
 - [x] Auto-detect research sessions (configurable: default 8 tabs / 5 min window)
 - [x] Content script extracts title, meta description, headings (h1–h3), body snippet
 - [x] Pure-JS TF-IDF engine with stopword filtering and title boosting (3×)
 - [x] K-means++ clustering with elbow-method auto-K selection (k=2–6)
-- [x] Gemini `text-embedding-004` for AI embeddings (768-dim)
+- [x] Gemini `gemini-embedding-001` for AI embeddings (768-dim, replaces deprecated `text-embedding-004`)
 - [x] Gemini `gemini-1.5-flash` for tab summaries and session insights
 - [x] Full offline fallback (sentence scoring by position + keyword overlap)
 - [x] Chrome Tab Groups API: colored groups with keyword labels
@@ -78,12 +78,18 @@ git push
 - [x] Session auto-naming from dominant cluster keyword
 - [x] Reading order suggestion by URL path depth
 - [x] Cross-session search (title, tab titles, keywords)
-- [x] Dashboard: session list, cluster grid, hover cards with on-demand summaries
 - [x] Markdown export with full session structure
 - [x] Options: detection thresholds (sliders), Gemini API key (XOR-obfuscated), theme
 - [x] Storage quota warning at 8MB
 - [x] MV3 service worker persistence via `chrome.storage.session` + `chrome.alarms`
 - [x] Keyboard shortcuts: `Ctrl+Shift+R` (popup), `Ctrl+Shift+D` (dashboard), `Ctrl+Shift+E` (export)
+- [x] **Instant clustering** — "Cluster My Tabs" injects scripts, waits for content extraction (5s timeout), clusters, and creates Chrome tab groups in one step
+- [x] **Re-cluster on new tabs** — tabs opened after clustering are tracked; popup shows "Re-cluster (N new tabs)" button
+- [x] **Archive session** — saves session without re-clustering; replaces old "End & Cluster"
+- [x] **Dashboard cluster lanes** — full-width horizontal strips with color-coded left border, keyword pills, tab count
+- [x] **Tab pills** — compact clickable rounded cards (favicon + title) replacing old list rows
+- [x] **Tab detail modal** — click any pill to open overlay with full title, URL, dwell time, AI bullet summary, Open in New Tab button
+- [x] **Upgraded summary panel** — subtle green gradient background, arrow-prefix bullet styling
 
 ### Known Improvements To Build Next
 - [ ] Tag sessions with custom labels (in addition to auto-name)
@@ -98,7 +104,7 @@ git push
 
 ## Chrome Web Store Submission — Progress Log
 
-### Status: Submitted for review (awaiting approval)
+### Status: Review cancelled — testing locally before re-submission
 
 ### What has been done
 
@@ -160,7 +166,7 @@ git push
 |---|---|---|
 | `src/background/service-worker.ts` | `dist/background/service-worker.js` | Tab monitoring, session orchestration |
 | `src/content/content-script.ts` | `dist/content/content-script.js` | Page content extraction |
-| `src/popup/popup.ts` | `dist/popup/popup.js` | Extension popup (3 states) |
+| `src/popup/popup.ts` | `dist/popup/popup.js` | Extension popup (idle / active / prompt states) |
 | `src/dashboard/dashboard.ts` | `dist/dashboard/dashboard.js` | Full session dashboard |
 | `src/options/options.ts` | `dist/options/options.js` | Settings page |
 
@@ -170,22 +176,20 @@ git push
 | `src/lib/storage.ts` | `chrome.storage` CRUD + API key obfuscation |
 | `src/lib/tfidf.ts` | TF-IDF tokenization, IDF, cosine similarity |
 | `src/lib/clustering.ts` | K-means++, elbow method, duplicate detection, reading order |
-| `src/lib/embeddings.ts` | Gemini `text-embedding-004` API wrapper |
+| `src/lib/embeddings.ts` | Gemini `gemini-embedding-001` API wrapper (768-dim, outputDimensionality param) |
 | `src/lib/summarizer.ts` | Gemini `gemini-1.5-flash` + offline sentence scoring |
 | `src/lib/tab-groups.ts` | Chrome Tab Groups API (skips non-groupable tabs) |
 | `src/lib/exporter.ts` | Markdown export formatter |
 
-### Data Flow
+### Data Flow (current — instant clustering)
 ```
 Tab opened
   → service-worker records event in chrome.storage.session
   → if threshold reached: notification prompt
-  → user confirms → startSession()
+  → user clicks "Cluster My Tabs" → startAndClusterSession()
+    → getLastFocused({ windowTypes: ['normal'] }) → query tabs
     → injects content-script into all open tabs
-    → content-script sends PAGE_CONTENT message
-    → service-worker updates TabData in ResearchSession
-  → user clicks "End & Cluster"
-    → endSession() flushes dwell times
+    → Promise countdown latch waits for PAGE_CONTENT messages (5s timeout)
     → buildCorpusTFIDF() on all tabs
     → (optional) batchEmbeddings() via Gemini API
     → clusterTabs() → k-means++ assignments
@@ -193,7 +197,43 @@ Tab opened
     → autoNameSession() → session title
     → (optional) summarizeSession() via Gemini API
     → saveSession() to chrome.storage.local
+    → broadcasts CLUSTER_COMPLETE → popup shows "Done! N clusters"
+
+New tab opened during active session:
+  → appended to session.tabs + state.newTabsSinceCluster
+  → popup shows "Re-cluster (N new tabs)" button
+  → user clicks Re-cluster → reclusterSession() → same pipeline on full session
+
+User done:
+  → "Archive & Close Session" → archiveSession() → sets endedAt, clears activeSessionId
 ```
+
+### Key Service Worker Functions
+| Function | Purpose |
+|---|---|
+| `startAndClusterSession()` | Full one-shot: extract → cluster → tab groups |
+| `reclusterSession(sessionId)` | Re-run clustering after new tabs added |
+| `archiveSession(sessionId)` | Save session without re-clustering, clear active state |
+| `clusterSession(session)` | Internal: TF-IDF + embeddings + k-means++ + tab groups + AI summary |
+| `waitForContentExtraction(id, n, ms)` | Promise latch: resolves when n PAGE_CONTENT messages arrive or timeout |
+
+### Message Bus (popup/dashboard → service worker)
+| Message type | Handler | Purpose |
+|---|---|---|
+| `GET_STATE` | inline | Returns `SessionDetectionState` |
+| `START_AND_CLUSTER` | `startAndClusterSession()` | One-shot cluster |
+| `RECLUSTER_SESSION` | `reclusterSession()` | Re-cluster with new tabs |
+| `ARCHIVE_SESSION` | `archiveSession()` | Save + deactivate session |
+| `START_SESSION` | alias → `startAndClusterSession()` | Legacy compat |
+| `END_SESSION` | alias → `archiveSession()` | Legacy compat |
+
+### Broadcast Messages (service worker → popup/dashboard)
+| Message type | When | Payload |
+|---|---|---|
+| `EXTRACTION_PROGRESS` | Each PAGE_CONTENT received | `{ done, total }` |
+| `CLUSTER_COMPLETE` | After clustering finishes | `{ sessionId, clusterCount }` |
+| `SESSION_ARCHIVED` | After archiving | `{ sessionId }` |
+| `NEW_TAB_ADDED` | New tab opened during session | — |
 
 ### MV3 Service Worker Gotcha
 Service workers are **ephemeral** — Chrome kills them when idle. Never hold state in memory only.
@@ -210,12 +250,23 @@ chrome.tabs.onCreated.addListener(async (tab) => {
 chrome.alarms.create("prune-window", { periodInMinutes: 1 });
 ```
 
+The `_pendingExtractions` Map (countdown latch) is intentionally in-memory because the entire extract→cluster flow runs within a single service worker invocation. The 5s timeout is the safety valve if the worker is killed mid-flight.
+
 ### Storage Layout
 | Key | Storage area | Contents |
 |---|---|---|
 | `rn_sessions` | `chrome.storage.local` | `ResearchSession[]` |
 | `rn_settings` | `chrome.storage.local` | `UserSettings` (incl. obfuscated API key) |
-| `rn_detection` | `chrome.storage.session` | `SessionDetectionState` (ephemeral) |
+| `rn_detection` | `chrome.storage.session` | `SessionDetectionState` (ephemeral, includes `newTabsSinceCluster`) |
+
+### SessionDetectionState fields
+| Field | Purpose |
+|---|---|
+| `recentTabEvents` | Tab open events within the detection window |
+| `activeSessionId` | ID of the currently running session, if any |
+| `sessionPromptedAt` | Timestamp of last auto-detect notification (2-min cooldown) |
+| `newTabsSinceCluster` | Tab IDs opened after the last cluster run (drives re-cluster badge) |
+| `lastClusteredAt` | Timestamp of last successful cluster run |
 
 ---
 

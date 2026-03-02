@@ -1,6 +1,6 @@
 // Pure-JS TF-IDF engine — zero runtime dependencies
 
-const STOPWORDS = new Set([
+export const STOPWORDS = new Set([
   "a","about","above","after","again","against","all","am","an","and","any","are","aren't",
   "as","at","be","because","been","before","being","below","between","both","but","by",
   "can't","cannot","could","couldn't","did","didn't","do","does","doesn't","doing","don't",
@@ -95,12 +95,12 @@ export function topKeywords(
 }
 
 // Build TF-IDF vectors for a corpus of tab texts.
-// Title is repeated 3x to boost its weight.
+// Title is repeated 5x to boost its weight over noisy body content.
 export function buildCorpusTFIDF(
   texts: { title: string; body: string }[]
 ): Record<string, number>[] {
   const tfs = texts.map(({ title, body }) => {
-    const combined = [title, title, title, body].join(" ");
+    const combined = [title, title, title, title, title, body].join(" ");
     return computeTF(tokenize(combined));
   });
   const idf = computeIDF(tfs);

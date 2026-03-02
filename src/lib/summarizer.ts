@@ -122,12 +122,13 @@ Provide:
 
 // Score sentences by position + keyword density
 function scoreOffline(
-  tab: { title: string; headings: string[]; bodySnippet: string }
+  tab: { title: string; metaDescription: string; headings: string[]; bodySnippet: string }
 ): string[] {
-  const sentences = tab.bodySnippet
+  const combined = [tab.metaDescription, tab.bodySnippet].filter(Boolean).join(". ");
+  const sentences = combined
     .split(/[.!?]+/)
     .map((s) => s.trim())
-    .filter((s) => s.split(" ").length >= 6)
+    .filter((s) => s.split(" ").length >= 5)
     .slice(0, 20);
 
   if (sentences.length === 0) {

@@ -1,6 +1,6 @@
 // K-means++ clustering — works on both sparse TF-IDF dicts and dense float arrays
 
-import { cosineSimilarity, topKeywords } from "./tfidf.js";
+import { cosineSimilarity, topKeywords, STOPWORDS } from "./tfidf.js";
 import type { Cluster, TabData } from "../types/index.js";
 import { CLUSTER_COLORS } from "../types/index.js";
 
@@ -280,14 +280,6 @@ export function clusterTabs(
     assignments = kmeansSpare(tfidfVectors, k);
   }
 
-  // Safety net: force ≥2 clusters when enough tabs are present
-  if (tabs.length >= 4 && k === 1) {
-    k = 2;
-    assignments = hasEmbeddings
-      ? kmeansDense(tabs.map((t) => t.embedding!), k)
-      : kmeansSpare(tfidfVectors, k);
-  }
-
   // Build clusters
   const clusterMap = new Map<number, number[]>();
   assignments.forEach((cIdx, tabIdx) => {
@@ -300,10 +292,22 @@ export function clusterTabs(
   let colorIdx = 0;
 
   for (const [, tabIndices] of clusterMap) {
-    // Compute centroid TF-IDF for label
+    // Compute centroid TF-IDF for keywords
     const centroidVec = centroidSparse(tabIndices.map((i) => tfidfVectors[i]));
     const keywords = topKeywords(centroidVec, 5);
-    const label = keywords.slice(0, 2).join(" ") || "research";
+
+    // Generate label from most frequent words in tab titles for this cluster
+    const clusterTabData = tabIndices.map((i) => tabs[i]);
+    const titleWords = clusterTabData
+      .flatMap((t) => t.title.toLowerCase().split(/\W+/).filter((w) => w.length > 3))
+      .filter((w) => !STOPWORDS.has(w));
+    const freq: Record<string, number> = {};
+    for (const w of titleWords) freq[w] = (freq[w] ?? 0) + 1;
+    const topWords = Object.entries(freq)
+      .sort(([, a], [, b]) => b - a)
+      .slice(0, 2)
+      .map(([w]) => w);
+    const label = topWords.join(" ") || clusterTabData[0]?.title.split(" ").slice(0, 2).join(" ") || "research";
 
     clusters.push({
       clusterId: crypto.randomUUID(),

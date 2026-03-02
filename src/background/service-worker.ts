@@ -446,7 +446,10 @@ async function clusterSession(session: ResearchSession): Promise<void> {
   if (tabs.length === 0) return;
 
   const vectors = buildCorpusTFIDF(
-    tabs.map((t) => ({ title: t.title, body: t.bodySnippet + " " + t.headings.join(" ") }))
+    tabs.map((t) => ({
+      title: t.title,
+      body: [t.metaDescription, t.bodySnippet, t.headings.join(" ")].filter(Boolean).join(" "),
+    }))
   );
 
   if (settings.aiEnabled) {

@@ -36,6 +36,8 @@
     --text:       #F5F5F4;
     --muted:      #A8A29E;
     --border:     #3C3A37;
+    --accent:     #60A5FA;
+    --accent-hov: #93C5FD;
     --accent-dim: rgba(96,165,250,.1);
   }
 }
@@ -529,7 +531,7 @@ body {
   text-decoration: none;
   display: block;
 }
-.modal-url:hover { text-decoration: underline; color: var(--accent); }
+.modal-url:hover { text-decoration: underline; color: var(--amber); }
 
 .modal-meta {
   display: flex; gap: 14px; align-items: center;
@@ -561,14 +563,18 @@ body {
 }
 @keyframes spin { to { transform: rotate(360deg); } }
 
-.modal-bullets { list-style: none; padding: 0; }
+.modal-bullets { list-style: none; padding: 0; display: flex; flex-direction: column; gap: 6px; }
 .modal-bullets li {
-  font-size: 0.875rem; line-height: 1.65; padding: 6px 0 6px 18px;
-  position: relative; border-bottom: 1px solid var(--border);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  border-left: 3px solid var(--accent);
+  padding: 10px 14px;
+  font-size: 0.875rem;
+  line-height: 1.6;
   color: var(--text);
 }
-.modal-bullets li:last-child { border-bottom: none; }
-.modal-bullets li::before { content: "→"; position: absolute; left: 0; color: var(--accent); font-weight: 700; }
+.modal-bullets li::before { display: none; }
 
 .modal-actions {
   display: flex; gap: 10px; justify-content: flex-end;
@@ -598,3 +604,18 @@ body {
 .btn-icon { background: none; border: none; cursor: pointer; font-size: 0.9rem; padding: 2px 4px; }
 
 .hidden { display: none !important; }
+
+/* ── Right panel placeholder ─────────────────────────────────────────────── */
+.panel-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 32px 16px;
+  text-align: center;
+  color: var(--muted);
+  font-size: 0.82rem;
+  line-height: 1.6;
+}
+.panel-placeholder-icon { font-size: 2rem; }
+.panel-placeholder.hidden { display: none; }

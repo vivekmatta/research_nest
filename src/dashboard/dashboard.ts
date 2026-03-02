@@ -18,6 +18,7 @@ const $ = <T extends Element>(id: string) => document.getElementById(id) as unkn
 const sessionList = $<HTMLDivElement>("session-list");
 const welcome = $<HTMLDivElement>("welcome");
 const sessionDetail = $<HTMLDivElement>("session-detail");
+const panelPlaceholder = $<HTMLDivElement>("panel-placeholder");
 const searchInput = $<HTMLInputElement>("search-input");
 
 // Cluster color hex map
@@ -86,6 +87,7 @@ function selectSession(id: string): void {
 function renderDetail(session: ResearchSession): void {
   welcome.classList.add("hidden");
   sessionDetail.classList.remove("hidden");
+  panelPlaceholder.classList.add("hidden");
 
   const titleEl = $<HTMLHeadingElement>("detail-title");
   titleEl.textContent = session.title;
@@ -382,6 +384,7 @@ $("btn-delete").addEventListener("click", async () => {
   await loadSessions();
   welcome.classList.remove("hidden");
   sessionDetail.classList.add("hidden");
+  panelPlaceholder.classList.remove("hidden");
 });
 
 $("btn-edit-title").addEventListener("click", () => {
@@ -437,6 +440,7 @@ searchInput.addEventListener("input", () => {
         activeSessionId = null;
         welcome.classList.remove("hidden");
         sessionDetail.classList.add("hidden");
+        panelPlaceholder.classList.remove("hidden");
       }
     }
   }

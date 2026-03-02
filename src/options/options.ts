@@ -7,10 +7,6 @@ const $ = <T extends Element>(id: string) => document.getElementById(id) as unkn
 const geminiKeyInput = $<HTMLInputElement>("gemini-key");
 const aiEnabledInput = $<HTMLInputElement>("ai-enabled");
 const autoDetectInput = $<HTMLInputElement>("auto-detect");
-const thresholdInput = $<HTMLInputElement>("threshold");
-const thresholdVal = $<HTMLElement>("threshold-val");
-const windowInput = $<HTMLInputElement>("window");
-const windowVal = $<HTMLElement>("window-val");
 const themeSelect = $<HTMLSelectElement>("theme");
 const saveStatus = $<HTMLSpanElement>("save-status");
 const keyStatus = $<HTMLSpanElement>("key-status");
@@ -21,25 +17,11 @@ async function loadSettings(): Promise<void> {
   const settings = await getSettings();
   aiEnabledInput.checked = settings.aiEnabled;
   autoDetectInput.checked = settings.autoDetectEnabled;
-  thresholdInput.value = String(settings.detectionThreshold);
-  thresholdVal.textContent = String(settings.detectionThreshold);
-  windowInput.value = String(settings.detectionWindowMinutes);
-  windowVal.textContent = String(settings.detectionWindowMinutes);
   themeSelect.value = settings.theme;
 
   const key = await getGeminiKey();
   if (key) geminiKeyInput.value = key;
 }
-
-// ── Live slider updates ───────────────────────────────────────────────────────
-
-thresholdInput.addEventListener("input", () => {
-  thresholdVal.textContent = thresholdInput.value;
-});
-
-windowInput.addEventListener("input", () => {
-  windowVal.textContent = windowInput.value;
-});
 
 // ── Toggle API key visibility ─────────────────────────────────────────────────
 
@@ -103,8 +85,6 @@ $("settings-form").addEventListener("submit", async (e) => {
   const newSettings: Partial<UserSettings> = {
     aiEnabled: aiEnabledInput.checked,
     autoDetectEnabled: autoDetectInput.checked,
-    detectionThreshold: parseInt(thresholdInput.value),
-    detectionWindowMinutes: parseInt(windowInput.value),
     theme: themeSelect.value as UserSettings["theme"],
   };
 

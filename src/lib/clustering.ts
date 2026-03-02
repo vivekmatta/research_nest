@@ -195,7 +195,7 @@ function estimateK(
     const curr = inertias[i];
     if (prev === 0) return i;
     const improvement = (prev - curr) / prev;
-    if (improvement < 0.2) return i; // k = i (1-indexed)
+    if (improvement < 0.05) return i; // k = i (1-indexed)
   }
   return kMax;
 }
@@ -278,6 +278,14 @@ export function clusterTabs(
   } else {
     k = estimateK(tfidfVectors, tabs.length);
     assignments = kmeansSpare(tfidfVectors, k);
+  }
+
+  // Safety net: force ≥2 clusters when enough tabs are present
+  if (tabs.length >= 4 && k === 1) {
+    k = 2;
+    assignments = hasEmbeddings
+      ? kmeansDense(tabs.map((t) => t.embedding!), k)
+      : kmeansSpare(tfidfVectors, k);
   }
 
   // Build clusters

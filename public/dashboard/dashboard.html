@@ -4,6 +4,9 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>ResearchNest Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=DM+Sans:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="../dashboard.css" />
 </head>
 <body>
@@ -23,7 +26,13 @@
     <main class="main">
       <!-- Sidebar: session list -->
       <aside class="sidebar" id="sidebar">
-        <h2 class="sidebar-title">Sessions</h2>
+        <div class="sidebar-controls">
+          <h2 class="sidebar-title">Sessions</h2>
+          <select id="sort-select">
+            <option value="newest">Newest</option>
+            <option value="oldest">Oldest</option>
+          </select>
+        </div>
         <div id="session-list" class="session-list">
           <p class="empty-msg">No sessions yet.</p>
         </div>
@@ -43,15 +52,33 @@
             <div class="detail-title-row">
               <h2 id="detail-title" class="detail-title" contenteditable="false"></h2>
               <button id="btn-edit-title" class="btn-icon" title="Edit title">✏️</button>
+            </div>
+            <div class="detail-meta-row">
               <span id="detail-date" class="detail-date"></span>
+              <div class="detail-badges">
+                <span id="badge-tabs" class="badge"></span>
+                <span id="badge-clusters" class="badge"></span>
+              </div>
             </div>
             <div class="detail-actions">
-              <button id="btn-export" class="btn btn-ghost">Export Markdown</button>
               <button id="btn-delete" class="btn btn-ghost btn-danger-ghost">Delete Session</button>
             </div>
           </div>
 
-          <!-- Summary panel -->
+          <div id="skeleton-clusters" class="skeleton-clusters hidden">
+            <div class="skeleton-line" style="width: 40%"></div>
+            <div class="skeleton-line" style="width: 60%"></div>
+            <div class="skeleton-line" style="width: 50%"></div>
+          </div>
+
+          <!-- Cluster cards -->
+          <div id="cluster-grid" class="cluster-lanes"></div>
+        </div>
+      </section>
+
+      <!-- Right panel: summary + actions -->
+      <aside class="panel-right" id="panel-right">
+        <div class="panel-right-inner">
           <div id="summary-panel" class="summary-panel hidden">
             <h3>Session Summary</h3>
             <p id="summary-text"></p>
@@ -64,11 +91,14 @@
               <ul id="questions-list"></ul>
             </div>
           </div>
-
-          <!-- Cluster lanes -->
-          <div id="cluster-grid" class="cluster-lanes"></div>
+          <div class="panel-actions">
+            <button id="btn-export-md" class="btn btn-primary">↓ Export Markdown</button>
+            <button id="btn-export-json" class="btn btn-ghost">↓ Export JSON</button>
+            <hr class="panel-divider" />
+            <button id="btn-recluster" class="btn btn-ghost">↺ Re-cluster</button>
+          </div>
         </div>
-      </section>
+      </aside>
     </main>
   </div>
 

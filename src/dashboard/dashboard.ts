@@ -9,6 +9,8 @@ import { getGeminiKey, getSettings } from "../lib/storage.js";
 let allSessions: ResearchSession[] = [];
 let activeSessionId: string | null = null;
 let searchQuery = "";
+let sortOrder: "newest" | "oldest" = "newest";
+let collapsedClusters = new Set<string>();
 
 // ── DOM refs ──────────────────────────────────────────────────────────────────
 
@@ -37,7 +39,9 @@ async function loadSessions(): Promise<void> {
 
 function renderSidebar(): void {
   const q = searchQuery.toLowerCase();
-  let filtered = allSessions.slice().sort((a, b) => b.createdAt - a.createdAt);
+  let filtered = allSessions.slice().sort((a, b) =>
+    sortOrder === "newest" ? b.createdAt - a.createdAt : a.createdAt - b.createdAt
+  );
 
   if (q) {
     filtered = filtered.filter((s) =>
@@ -91,7 +95,12 @@ function renderDetail(session: ResearchSession): void {
   const duration = session.endedAt
     ? formatDuration(session.endedAt - session.createdAt)
     : "in progress";
-  dateEl.textContent = `${date} · ${duration} · ${session.tabs.length} tabs`;
+  dateEl.textContent = `${date} · ${duration}`;
+
+  const tabBadge = document.getElementById("badge-tabs");
+  const clusterBadge = document.getElementById("badge-clusters");
+  if (tabBadge) tabBadge.textContent = `${session.tabs.length} tabs`;
+  if (clusterBadge) clusterBadge.textContent = `${session.clusters.length} clusters`;
 
   // Summary panel
   const summaryPanel = $("summary-panel");
@@ -123,58 +132,112 @@ function renderDetail(session: ResearchSession): void {
   renderClusterLanes(session);
 }
 
-// ── Cluster lanes ─────────────────────────────────────────────────────────────
+// ── Cluster cards ─────────────────────────────────────────────────────────────
 
 function renderClusterLanes(session: ResearchSession): void {
   const container = $<HTMLDivElement>("cluster-grid");
 
+  const chevronSvg = `<svg class="cluster-chevron" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M3 5l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+  </svg>`;
+
   if (session.clusters.length === 0) {
-    container.innerHTML = `<div class="cluster-lane">
-      <div class="lane-header" style="border-left-color: #6b7280">
-        <span class="lane-label">All Tabs</span>
-        <span class="lane-tab-count">${session.tabs.length} tab${session.tabs.length !== 1 ? "s" : ""}</span>
+    const cardId = `card-all`;
+    const isCollapsed = collapsedClusters.has(cardId) ? " collapsed" : "";
+    container.innerHTML = `<div class="cluster-card${isCollapsed}" id="${cardId}" style="--i:0">
+      <button class="cluster-card-header" data-card-id="${cardId}">
+        <span class="cluster-accent-bar" style="background:#6b7280"></span>
+        <span class="cluster-label">All Tabs</span>
+        <span class="cluster-count">${session.tabs.length} tab${session.tabs.length !== 1 ? "s" : ""}</span>
+        ${chevronSvg}
+      </button>
+      <div class="cluster-body">
+        ${session.tabs.map(tabRowHtml).join("")}
       </div>
-      <div class="lane-tabs">${session.tabs.map(tabPillHtml).join("")}</div>
     </div>`;
   } else {
-    container.innerHTML = session.clusters.map((cluster) => {
+    container.innerHTML = session.clusters.map((cluster, i) => {
       const clusterTabs = cluster.tabIds
         .map((id) => session.tabs.find((t) => t.tabId === id))
         .filter(Boolean) as TabData[];
       const color = COLOR_HEX[cluster.color] ?? "#6b7280";
-      const keywordPills = cluster.keywords.slice(0, 6)
+      const keywordPills = cluster.keywords.slice(0, 5)
         .map((k) => `<span class="keyword-pill">${escHtml(k)}</span>`)
         .join("");
-      return `<div class="cluster-lane">
-        <div class="lane-header" style="border-left-color: ${color}">
-          <span class="lane-label">${escHtml(cluster.label)}</span>
-          <div class="lane-keywords">${keywordPills}</div>
-          <span class="lane-tab-count">${clusterTabs.length} tab${clusterTabs.length !== 1 ? "s" : ""}</span>
+      const cardId = `card-${cluster.label}-${i}`;
+      const isCollapsed = collapsedClusters.has(cardId) ? " collapsed" : "";
+      return `<div class="cluster-card${isCollapsed}" id="${escHtml(cardId)}" style="--i:${i}">
+        <button class="cluster-card-header" data-card-id="${escHtml(cardId)}">
+          <span class="cluster-accent-bar" style="background:${color}"></span>
+          <span class="cluster-label">${escHtml(cluster.label)}</span>
+          <div class="cluster-keywords">${keywordPills}</div>
+          <span class="cluster-count">${clusterTabs.length} tab${clusterTabs.length !== 1 ? "s" : ""}</span>
+          ${chevronSvg}
+        </button>
+        <div class="cluster-body">
+          ${clusterTabs.map(tabRowHtml).join("")}
         </div>
-        <div class="lane-tabs">${clusterTabs.map(tabPillHtml).join("")}</div>
       </div>`;
     }).join("");
   }
 
-  // Attach click handlers
-  container.querySelectorAll(".tab-pill").forEach((el) => {
+  // Cluster header collapse/expand
+  container.querySelectorAll(".cluster-card-header").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const cardId = (btn as HTMLElement).dataset["cardId"]!;
+      const card = document.getElementById(cardId);
+      if (!card) return;
+      const isNowCollapsed = card.classList.toggle("collapsed");
+      if (isNowCollapsed) {
+        collapsedClusters.add(cardId);
+      } else {
+        collapsedClusters.delete(cardId);
+      }
+    });
+  });
+
+  // Tab row click → open modal
+  container.querySelectorAll(".tab-row").forEach((el) => {
     const tabId = parseInt((el as HTMLElement).dataset["tabId"] ?? "0");
     el.addEventListener("click", () => void openTabModal(tabId, session.sessionId));
   });
+
+  // Open in new tab button
+  container.querySelectorAll(".open-tab-btn").forEach((btn) => {
+    btn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const url = (btn as HTMLElement).dataset["url"];
+      if (url) chrome.tabs.create({ url });
+    });
+  });
+
+  // Copy link button
+  container.querySelectorAll(".copy-btn").forEach((btn) => {
+    btn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const url = (btn as HTMLElement).dataset["url"];
+      if (url) void navigator.clipboard.writeText(url);
+    });
+  });
 }
 
-function tabPillHtml(tab: TabData): string {
+function tabRowHtml(tab: TabData): string {
   const domain = safeHostname(tab.url);
   const faviconUrl = domain ? `https://www.google.com/s2/favicons?sz=16&domain=${domain}` : "";
   const favicon = faviconUrl
-    ? `<img class="pill-favicon" src="${faviconUrl}" alt="" onerror="this.style.display='none'">`
-    : "";
-  const dupeClass = tab.isDuplicate ? " duplicate" : "";
-  const dupeBadge = tab.isDuplicate ? `<span class="pill-badge">dup</span>` : "";
-  return `<div class="tab-pill${dupeClass}" data-tab-id="${tab.tabId}" title="${escHtml(tab.url)}">
+    ? `<img class="tab-favicon" src="${faviconUrl}" alt="" onerror="this.style.display='none'">`
+    : `<span class="tab-favicon"></span>`;
+  const dupeClass = tab.isDuplicate ? " tab-row--dup" : "";
+  return `<div class="tab-row${dupeClass}" data-tab-id="${tab.tabId}">
     ${favicon}
-    <span class="pill-title">${escHtml(tab.title || tab.url)}</span>
-    ${dupeBadge}
+    <div class="tab-info">
+      <span class="tab-title">${escHtml(tab.title || tab.url)}</span>
+      <span class="tab-domain">${escHtml(domain)}</span>
+    </div>
+    <div class="tab-actions">
+      <button class="tab-action open-tab-btn" title="Open in new tab" data-url="${escHtml(tab.url)}">↗</button>
+      <button class="tab-action copy-btn" title="Copy link" data-url="${escHtml(tab.url)}">⧉</button>
+    </div>
   </div>`;
 }
 
@@ -281,13 +344,30 @@ $("btn-welcome-start").addEventListener("click", () => {
   });
 });
 
-$("btn-export").addEventListener("click", () => {
+$("btn-export-md").addEventListener("click", () => {
   if (!activeSessionId) return;
   const session = allSessions.find((s) => s.sessionId === activeSessionId);
   if (!session) return;
   const md = exportToMarkdown(session);
   const safeName = session.title.replace(/[^a-z0-9]/gi, "-").toLowerCase();
   downloadMarkdown(md, `researchnest-${safeName}.md`);
+});
+
+$("btn-export-json").addEventListener("click", () => {
+  if (!activeSessionId) return;
+  const session = allSessions.find((s) => s.sessionId === activeSessionId);
+  if (!session) return;
+  const blob = new Blob([JSON.stringify(session, null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  const safeName = session.title.replace(/[^a-z0-9]/gi, "-").toLowerCase();
+  a.href = url; a.download = `researchnest-${safeName}.json`; a.click();
+  URL.revokeObjectURL(url);
+});
+
+$("btn-recluster").addEventListener("click", () => {
+  if (!activeSessionId) return;
+  chrome.runtime.sendMessage({ type: "RECLUSTER_SESSION", sessionId: activeSessionId });
 });
 
 $("btn-delete").addEventListener("click", async () => {
@@ -334,6 +414,12 @@ $("detail-title").addEventListener("blur", async () => {
 });
 
 $("btn-options").addEventListener("click", () => chrome.runtime.openOptionsPage());
+
+// Sort
+document.getElementById("sort-select")?.addEventListener("change", (e) => {
+  sortOrder = (e.target as HTMLSelectElement).value as "newest" | "oldest";
+  renderSidebar();
+});
 
 // ── Search ────────────────────────────────────────────────────────────────────
 

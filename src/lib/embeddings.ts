@@ -1,7 +1,7 @@
-// Gemini text-embedding-004 API wrapper
+// Gemini gemini-embedding-001 API wrapper (replaces text-embedding-004, deprecated Jan 2026)
 
 const EMBED_URL =
-  "https://generativelanguage.googleapis.com/v1beta/models/text-embedding-004:embedContent";
+  "https://generativelanguage.googleapis.com/v1beta/models/gemini-embedding-001:embedContent";
 
 export async function getEmbedding(
   text: string,
@@ -11,8 +11,9 @@ export async function getEmbedding(
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      model: "models/text-embedding-004",
+      model: "models/gemini-embedding-001",
       content: { parts: [{ text: text.slice(0, 2000) }] },
+      outputDimensionality: 768,
     }),
   });
 

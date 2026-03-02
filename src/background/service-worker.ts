@@ -206,7 +206,10 @@ export async function startSession(): Promise<string> {
   const state = await storage.getDetectionState();
   if (state.activeSessionId) return state.activeSessionId;
 
-  const [currentWindow] = await chrome.windows.getAll({ populate: false });
+  const currentWindow = await chrome.windows.getLastFocused({
+    populate: false,
+    windowTypes: ["normal"],
+  }).catch(() => null);
   const windowId = currentWindow?.id ?? 0;
 
   // Gather all open non-system tabs in the current window
@@ -366,11 +369,15 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
     return true;
   }
   if (msg.type === "START_SESSION") {
-    startSession().then((id) => sendResponse({ sessionId: id }));
+    startSession()
+      .then((id) => sendResponse({ sessionId: id }))
+      .catch((err) => sendResponse({ error: String(err) }));
     return true;
   }
   if (msg.type === "END_SESSION") {
-    endSession(msg.sessionId).then(() => sendResponse({ ok: true }));
+    endSession(msg.sessionId)
+      .then(() => sendResponse({ ok: true }))
+      .catch((err) => sendResponse({ error: String(err) }));
     return true;
   }
   return false;

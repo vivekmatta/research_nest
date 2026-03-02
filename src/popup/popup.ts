@@ -86,9 +86,14 @@ async function render() {
 
 $("btn-start").addEventListener("click", async () => {
   showLoading("Starting session…");
-  await new Promise<void>((resolve) => {
-    chrome.runtime.sendMessage({ type: "START_SESSION" }, () => resolve());
+  const res = await new Promise<{ sessionId?: string; error?: string }>((resolve) => {
+    chrome.runtime.sendMessage({ type: "START_SESSION" }, (r) => resolve(r ?? {}));
   });
+  if (res.error) {
+    hideLoading();
+    alert(`Failed to start session: ${res.error}`);
+    return;
+  }
   await render();
   hideLoading();
 });
@@ -106,9 +111,14 @@ $("btn-end").addEventListener("click", async () => {
 
 $("btn-confirm-start").addEventListener("click", async () => {
   showLoading("Starting session…");
-  await new Promise<void>((resolve) => {
-    chrome.runtime.sendMessage({ type: "START_SESSION" }, () => resolve());
+  const res = await new Promise<{ sessionId?: string; error?: string }>((resolve) => {
+    chrome.runtime.sendMessage({ type: "START_SESSION" }, (r) => resolve(r ?? {}));
   });
+  if (res.error) {
+    hideLoading();
+    alert(`Failed to start session: ${res.error}`);
+    return;
+  }
   await render();
   hideLoading();
 });

@@ -42,6 +42,8 @@ export interface SessionDetectionState {
   recentTabEvents: { tabId: number; timestamp: number; windowId: number }[];
   sessionPromptedAt?: number;
   activeSessionId?: string;
+  newTabsSinceCluster?: number[];  // tabIds opened after last cluster run
+  lastClusteredAt?: number;        // timestamp of last cluster run
 }
 
 export interface UserSettings {

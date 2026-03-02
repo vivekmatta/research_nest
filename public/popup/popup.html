@@ -15,7 +15,7 @@
         <h1>ResearchNest</h1>
       </div>
       <p class="tagline">Cluster your research tabs automatically.</p>
-      <button id="btn-start" class="btn btn-primary">Start Session</button>
+      <button id="btn-start" class="btn btn-primary">Cluster My Tabs</button>
       <div class="actions-row">
         <button id="btn-dashboard-idle" class="btn btn-ghost">Open Dashboard</button>
         <button id="btn-options" class="btn btn-ghost">Settings</button>
@@ -42,7 +42,10 @@
           <span class="stat-label">duration</span>
         </div>
       </div>
-      <button id="btn-end" class="btn btn-danger">End &amp; Cluster</button>
+      <button id="btn-recluster" class="btn btn-secondary hidden">
+        Re-cluster (<span id="new-tab-count">0</span> new tabs)
+      </button>
+      <button id="btn-archive" class="btn btn-ghost">Archive &amp; Close Session</button>
       <div class="actions-row">
         <button id="btn-dashboard-active" class="btn btn-ghost">Dashboard</button>
       </div>
@@ -53,14 +56,15 @@
       <div class="prompt-icon">🔍</div>
       <h2>Research session detected!</h2>
       <p id="prompt-msg" class="prompt-msg">You've opened several tabs recently.</p>
-      <button id="btn-confirm-start" class="btn btn-primary">Start Session</button>
+      <button id="btn-confirm-start" class="btn btn-primary">Cluster My Tabs</button>
       <button id="btn-dismiss" class="btn btn-ghost">Dismiss</button>
     </div>
 
-    <!-- loading overlay -->
-    <div id="loading" class="loading hidden">
+    <!-- progress overlay -->
+    <div id="progress-overlay" class="progress-overlay hidden">
       <div class="spinner"></div>
-      <p id="loading-msg">Processing…</p>
+      <p id="progress-step" class="progress-step">Starting…</p>
+      <p id="progress-detail" class="progress-detail"></p>
     </div>
   </div>
   <script type="module" src="popup.js"></script>

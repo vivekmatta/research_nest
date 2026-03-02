@@ -34,8 +34,8 @@
         <div id="welcome" class="welcome">
           <div class="welcome-icon">🪺</div>
           <h2>Welcome to ResearchNest</h2>
-          <p>Start a session when you're on a research spree. Your tabs will be automatically clustered by topic and saved here.</p>
-          <button id="btn-welcome-start" class="btn btn-primary">Start a Session</button>
+          <p>Open the extension popup and click <strong>Cluster My Tabs</strong> to instantly group your research tabs by topic.</p>
+          <button id="btn-welcome-start" class="btn btn-primary">Cluster My Tabs</button>
         </div>
 
         <div id="session-detail" class="session-detail hidden">
@@ -65,24 +65,39 @@
             </div>
           </div>
 
-          <!-- Cluster grid -->
-          <div id="cluster-grid" class="cluster-grid"></div>
+          <!-- Cluster lanes -->
+          <div id="cluster-grid" class="cluster-lanes"></div>
         </div>
       </section>
     </main>
   </div>
 
-  <!-- Tab hover card -->
-  <div id="hover-card" class="hover-card hidden">
-    <div class="hover-favicon">
-      <img id="hover-favicon-img" src="" alt="" />
-    </div>
-    <div class="hover-body">
-      <div id="hover-title" class="hover-title"></div>
-      <div id="hover-url" class="hover-url"></div>
-      <div id="hover-dwell" class="hover-dwell"></div>
-      <ul id="hover-bullets" class="hover-bullets"></ul>
-      <div id="hover-loading" class="hover-loading hidden">Generating summary…</div>
+  <!-- Tab detail modal -->
+  <div id="tab-modal-backdrop" class="tab-modal-backdrop hidden">
+    <div id="tab-modal" class="tab-modal" role="dialog" aria-modal="true">
+      <button id="tab-modal-close" class="tab-modal-close" aria-label="Close">&times;</button>
+      <div class="tab-modal-header">
+        <img id="modal-favicon" class="modal-favicon" src="" alt="" />
+        <div class="modal-title-block">
+          <h2 id="modal-title" class="modal-title"></h2>
+          <a id="modal-url" class="modal-url" href="#" target="_blank" rel="noopener"></a>
+        </div>
+      </div>
+      <div class="modal-meta">
+        <span id="modal-dwell" class="modal-meta-item"></span>
+        <span id="modal-duplicate" class="modal-meta-item modal-dup hidden">Duplicate tab</span>
+      </div>
+      <div class="modal-summary">
+        <div id="modal-spinner" class="modal-spinner hidden">
+          <div class="spinner"></div>
+          <span>Generating summary…</span>
+        </div>
+        <ul id="modal-bullets" class="modal-bullets"></ul>
+      </div>
+      <div class="modal-actions">
+        <button id="tab-modal-close-btn" class="btn btn-ghost">Close</button>
+        <a id="modal-open-tab" class="btn btn-primary" href="#" target="_blank" rel="noopener">Open in New Tab</a>
+      </div>
     </div>
   </div>
 

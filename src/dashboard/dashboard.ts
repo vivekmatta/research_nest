@@ -17,7 +17,13 @@ const sessionList = $<HTMLDivElement>("session-list");
 const welcome = $<HTMLDivElement>("welcome");
 const sessionDetail = $<HTMLDivElement>("session-detail");
 const searchInput = $<HTMLInputElement>("search-input");
-const hoverCard = $<HTMLDivElement>("hover-card");
+
+// Cluster color hex map
+const COLOR_HEX: Record<string, string> = {
+  blue: "#3b82f6", red: "#ef4444", yellow: "#eab308",
+  green: "#22c55e", pink: "#ec4899", purple: "#8b5cf6",
+  cyan: "#06b6d4", grey: "#6b7280",
+};
 
 // ── Load data ─────────────────────────────────────────────────────────────────
 
@@ -77,7 +83,6 @@ function renderDetail(session: ResearchSession): void {
   welcome.classList.add("hidden");
   sessionDetail.classList.remove("hidden");
 
-  // Title
   const titleEl = $<HTMLHeadingElement>("detail-title");
   titleEl.textContent = session.title;
 
@@ -115,145 +120,154 @@ function renderDetail(session: ResearchSession): void {
     summaryPanel.classList.add("hidden");
   }
 
-  // Cluster grid
-  renderClusterGrid(session);
+  renderClusterLanes(session);
 }
 
-function renderClusterGrid(session: ResearchSession): void {
-  const grid = $<HTMLDivElement>("cluster-grid");
+// ── Cluster lanes ─────────────────────────────────────────────────────────────
+
+function renderClusterLanes(session: ResearchSession): void {
+  const container = $<HTMLDivElement>("cluster-grid");
 
   if (session.clusters.length === 0) {
-    // No clusters yet — show flat tab list
-    grid.innerHTML = `<div class="cluster-card">
-      <div class="cluster-header">
-        <div class="cluster-dot color-grey"></div>
-        <span class="cluster-label">All Tabs</span>
-        <span class="cluster-count">${session.tabs.length}</span>
+    container.innerHTML = `<div class="cluster-lane">
+      <div class="lane-header" style="border-left-color: #6b7280">
+        <span class="lane-label">All Tabs</span>
+        <span class="lane-tab-count">${session.tabs.length} tab${session.tabs.length !== 1 ? "s" : ""}</span>
       </div>
-      <div class="tab-list">${session.tabs.map((t) => tabItemHtml(t)).join("")}</div>
+      <div class="lane-tabs">${session.tabs.map(tabPillHtml).join("")}</div>
     </div>`;
   } else {
-    grid.innerHTML = session.clusters.map((cluster) => {
+    container.innerHTML = session.clusters.map((cluster) => {
       const clusterTabs = cluster.tabIds
         .map((id) => session.tabs.find((t) => t.tabId === id))
         .filter(Boolean) as TabData[];
-      return `<div class="cluster-card">
-        <div class="cluster-header">
-          <div class="cluster-dot color-${cluster.color}"></div>
-          <span class="cluster-label">${escHtml(cluster.label)}</span>
-          <span class="cluster-count">${clusterTabs.length}</span>
+      const color = COLOR_HEX[cluster.color] ?? "#6b7280";
+      const keywordPills = cluster.keywords.slice(0, 6)
+        .map((k) => `<span class="keyword-pill">${escHtml(k)}</span>`)
+        .join("");
+      return `<div class="cluster-lane">
+        <div class="lane-header" style="border-left-color: ${color}">
+          <span class="lane-label">${escHtml(cluster.label)}</span>
+          <div class="lane-keywords">${keywordPills}</div>
+          <span class="lane-tab-count">${clusterTabs.length} tab${clusterTabs.length !== 1 ? "s" : ""}</span>
         </div>
-        <div class="cluster-keywords">Keywords: ${cluster.keywords.slice(0, 5).join(", ")}</div>
-        <div class="tab-list">${clusterTabs.map((t) => tabItemHtml(t)).join("")}</div>
+        <div class="lane-tabs">${clusterTabs.map(tabPillHtml).join("")}</div>
       </div>`;
     }).join("");
   }
 
-  // Attach hover events
-  grid.querySelectorAll(".tab-item").forEach((el) => {
+  // Attach click handlers
+  container.querySelectorAll(".tab-pill").forEach((el) => {
     const tabId = parseInt((el as HTMLElement).dataset["tabId"] ?? "0");
-    const sessionId = session.sessionId;
-
-    el.addEventListener("mouseenter", (e) => showHoverCard(tabId, sessionId, e as MouseEvent));
-    el.addEventListener("mousemove", (e) => repositionHoverCard(e as MouseEvent));
-    el.addEventListener("mouseleave", () => hideHoverCard());
-    el.addEventListener("click", () => {
-      const tab = session.tabs.find((t) => t.tabId === tabId);
-      if (tab?.url) chrome.tabs.create({ url: tab.url });
-    });
+    el.addEventListener("click", () => void openTabModal(tabId, session.sessionId));
   });
 }
 
-function tabItemHtml(tab: TabData): string {
-  const dupeClass = tab.isDuplicate ? " duplicate" : "";
-  const dupeBadge = tab.isDuplicate ? `<span class="duplicate-badge">dup</span>` : "";
-  const dwell = tab.dwellTimeMs ? `<span class="tab-dwell">${formatDwell(tab.dwellTimeMs)}</span>` : "";
+function tabPillHtml(tab: TabData): string {
   const domain = safeHostname(tab.url);
   const faviconUrl = domain ? `https://www.google.com/s2/favicons?sz=16&domain=${domain}` : "";
   const favicon = faviconUrl
-    ? `<img class="tab-favicon" src="${faviconUrl}" alt="" onerror="this.style.display='none'">`
+    ? `<img class="pill-favicon" src="${faviconUrl}" alt="" onerror="this.style.display='none'">`
     : "";
-  return `<div class="tab-item${dupeClass}" data-tab-id="${tab.tabId}" title="${escHtml(tab.url)}">
+  const dupeClass = tab.isDuplicate ? " duplicate" : "";
+  const dupeBadge = tab.isDuplicate ? `<span class="pill-badge">dup</span>` : "";
+  return `<div class="tab-pill${dupeClass}" data-tab-id="${tab.tabId}" title="${escHtml(tab.url)}">
     ${favicon}
-    <span class="tab-title">${escHtml(tab.title || tab.url)}</span>
-    ${dupeBadge}${dwell}
+    <span class="pill-title">${escHtml(tab.title || tab.url)}</span>
+    ${dupeBadge}
   </div>`;
 }
 
-// ── Hover card ────────────────────────────────────────────────────────────────
+// ── Tab detail modal ──────────────────────────────────────────────────────────
 
-let hoverTimeout: ReturnType<typeof setTimeout> | null = null;
+async function openTabModal(tabId: number, sessionId: string): Promise<void> {
+  const session = allSessions.find((s) => s.sessionId === sessionId);
+  if (!session) return;
+  const tab = session.tabs.find((t) => t.tabId === tabId);
+  if (!tab) return;
 
-async function showHoverCard(tabId: number, sessionId: string, e: MouseEvent): Promise<void> {
-  hoverTimeout = setTimeout(async () => {
-    const session = allSessions.find((s) => s.sessionId === sessionId);
-    if (!session) return;
-    const tab = session.tabs.find((t) => t.tabId === tabId);
-    if (!tab) return;
+  const domain = safeHostname(tab.url);
 
-    $<HTMLImageElement>("hover-favicon-img").src =
-      `https://www.google.com/s2/favicons?sz=16&domain=${safeHostname(tab.url)}`;
-    $("hover-title").textContent = tab.title;
-    $("hover-url").textContent = tab.url;
-    $("hover-dwell").textContent = tab.dwellTimeMs ? `Time: ${formatDwell(tab.dwellTimeMs)}` : "";
+  // Favicon
+  const faviconEl = $<HTMLImageElement>("modal-favicon");
+  faviconEl.src = domain ? `https://www.google.com/s2/favicons?sz=24&domain=${domain}` : "";
+  faviconEl.onerror = () => { faviconEl.style.display = "none"; };
 
-    const bulletsList = $<HTMLUListElement>("hover-bullets");
-    const hoverLoading = $("hover-loading");
+  // Title + URL
+  $("modal-title").textContent = tab.title || tab.url;
+  const urlEl = $<HTMLAnchorElement>("modal-url");
+  urlEl.textContent = tab.url;
+  urlEl.href = tab.url;
 
-    if (tab.summaryBullets && tab.summaryBullets.length > 0) {
-      bulletsList.innerHTML = tab.summaryBullets.map((b) => `<li>${escHtml(b)}</li>`).join("");
-      hoverLoading.classList.add("hidden");
-    } else {
-      bulletsList.innerHTML = "";
-      hoverLoading.classList.remove("hidden");
-      hoverCard.classList.remove("hidden");
-      repositionHoverCard(e);
+  // Open link
+  ($<HTMLAnchorElement>("modal-open-tab")).href = tab.url;
 
-      // Generate on demand
-      const settings = await getSettings();
-      const apiKey = settings.aiEnabled ? await getGeminiKey() : null;
-      const result = await summarizeTab(tab, apiKey, settings.aiEnabled);
-      tab.summaryBullets = result.bullets;
+  // Dwell time
+  $("modal-dwell").textContent = tab.dwellTimeMs
+    ? `Time on tab: ${formatDwell(tab.dwellTimeMs)}`
+    : "Dwell time not recorded";
 
-      // Persist updated tab
-      const idx = session.tabs.findIndex((t) => t.tabId === tabId);
-      if (idx >= 0) session.tabs[idx] = tab;
-      await chrome.storage.local.get("rn_sessions").then(async (res) => {
-        const sessions: ResearchSession[] = res["rn_sessions"] ?? [];
-        const si = sessions.findIndex((s) => s.sessionId === sessionId);
-        if (si >= 0) sessions[si] = session;
-        await chrome.storage.local.set({ rn_sessions: sessions });
-      });
+  // Duplicate badge
+  const dupEl = $("modal-duplicate");
+  dupEl.classList.toggle("hidden", !tab.isDuplicate);
 
-      hoverLoading.classList.add("hidden");
-      bulletsList.innerHTML = result.bullets.map((b) => `<li>${escHtml(b)}</li>`).join("");
+  // Summary bullets
+  const spinner = $("modal-spinner");
+  const bullets = $<HTMLUListElement>("modal-bullets");
+  bullets.innerHTML = "";
+
+  if (tab.summaryBullets && tab.summaryBullets.length > 0) {
+    bullets.innerHTML = tab.summaryBullets.map((b) => `<li>${escHtml(b)}</li>`).join("");
+    spinner.classList.add("hidden");
+  } else {
+    spinner.classList.remove("hidden");
+    $("tab-modal-backdrop").classList.remove("hidden");
+    document.body.style.overflow = "hidden";
+
+    const settings = await getSettings();
+    const apiKey = settings.aiEnabled ? await getGeminiKey() : null;
+    const result = await summarizeTab(tab, apiKey, settings.aiEnabled);
+    tab.summaryBullets = result.bullets;
+
+    // Persist
+    const si = allSessions.findIndex((s) => s.sessionId === sessionId);
+    if (si >= 0) {
+      const ti = allSessions[si].tabs.findIndex((t) => t.tabId === tabId);
+      if (ti >= 0) allSessions[si].tabs[ti] = tab;
+      const res = await chrome.storage.local.get("rn_sessions");
+      const sessions: ResearchSession[] = res["rn_sessions"] ?? [];
+      const idx = sessions.findIndex((s) => s.sessionId === sessionId);
+      if (idx >= 0) sessions[idx] = allSessions[si];
+      await chrome.storage.local.set({ rn_sessions: sessions });
     }
 
-    hoverCard.classList.remove("hidden");
-    repositionHoverCard(e);
-  }, 400);
+    spinner.classList.add("hidden");
+    bullets.innerHTML = result.bullets.map((b) => `<li>${escHtml(b)}</li>`).join("");
+    return; // backdrop already shown above
+  }
+
+  $("tab-modal-backdrop").classList.remove("hidden");
+  document.body.style.overflow = "hidden";
 }
 
-function repositionHoverCard(e: MouseEvent): void {
-  const x = e.clientX + 16;
-  const y = e.clientY + 8;
-  const w = hoverCard.offsetWidth;
-  const h = hoverCard.offsetHeight;
-  const vw = window.innerWidth;
-  const vh = window.innerHeight;
-  hoverCard.style.left = `${Math.min(x, vw - w - 8)}px`;
-  hoverCard.style.top = `${Math.min(y, vh - h - 8)}px`;
+function closeTabModal(): void {
+  $("tab-modal-backdrop").classList.add("hidden");
+  document.body.style.overflow = "";
 }
 
-function hideHoverCard(): void {
-  if (hoverTimeout) { clearTimeout(hoverTimeout); hoverTimeout = null; }
-  hoverCard.classList.add("hidden");
-}
+$("tab-modal-close").addEventListener("click", closeTabModal);
+$("tab-modal-close-btn").addEventListener("click", closeTabModal);
+$("tab-modal-backdrop").addEventListener("click", (e) => {
+  if ((e.target as HTMLElement).id === "tab-modal-backdrop") closeTabModal();
+});
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape") closeTabModal();
+});
 
 // ── Actions ───────────────────────────────────────────────────────────────────
 
 $("btn-new-session").addEventListener("click", async () => {
-  chrome.runtime.sendMessage({ type: "START_SESSION" }, async () => {
+  chrome.runtime.sendMessage({ type: "START_AND_CLUSTER" }, async () => {
     await loadSessions();
     const state = await chrome.storage.session.get("rn_detection");
     const detection = state["rn_detection"] as { activeSessionId?: string } | undefined;
@@ -261,8 +275,8 @@ $("btn-new-session").addEventListener("click", async () => {
   });
 });
 
-$("btn-welcome-start").addEventListener("click", async () => {
-  chrome.runtime.sendMessage({ type: "START_SESSION" }, async () => {
+$("btn-welcome-start").addEventListener("click", () => {
+  chrome.runtime.sendMessage({ type: "START_AND_CLUSTER" }, async () => {
     await loadSessions();
   });
 });
@@ -326,7 +340,6 @@ $("btn-options").addEventListener("click", () => chrome.runtime.openOptionsPage(
 searchInput.addEventListener("input", () => {
   searchQuery = searchInput.value;
   renderSidebar();
-  // If active session doesn't match search, deselect
   if (searchQuery && activeSessionId) {
     const session = allSessions.find((s) => s.sessionId === activeSessionId);
     if (session) {
@@ -366,9 +379,8 @@ function safeHostname(url: string): string {
 
 // ── Init ──────────────────────────────────────────────────────────────────────
 
-loadSessions();
+void loadSessions();
 
-// Listen for storage changes (session updates from background)
 chrome.storage.onChanged.addListener((changes, area) => {
   if (area === "local" && changes["rn_sessions"]) {
     allSessions = (changes["rn_sessions"].newValue as ResearchSession[]) ?? [];
